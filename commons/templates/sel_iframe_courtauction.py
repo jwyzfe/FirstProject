@@ -1,5 +1,7 @@
 
 from selenium import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
 
@@ -80,3 +82,18 @@ class iframe_test :
     def run(browser: webdriver.Chrome) -> pd.DataFrame:
         iframe_test.select_court(browser) 
         return iframe_test.get_data(browser)
+    
+
+if __name__ == '__main__':
+    # selenium
+    webdriver_manager_directory = ChromeDriverManager().install() # 딱 한번 수행이라 밖에
+    # ChromeDriver 실행
+    browser = webdriver.Chrome(service=ChromeService(webdriver_manager_directory))
+    # try - finally 자원 관리 필요 
+    try:
+        case_data = iframe_test.run(browser)
+    except Exception as e :
+        print(e)
+    finally:
+        browser.quit()
+    

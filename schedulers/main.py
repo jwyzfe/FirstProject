@@ -19,8 +19,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # 직접 만든 class          
 from commons.mongo_insert_recode import connect_mongo
 from commons.api_send_requester import ApiRequester
-from commons.sel_iframe_courtauction import iframe_test
-from commons.bs4_do_scrapping import bs4_scrapping
+from commons.templates.sel_iframe_courtauction import iframe_test
+from commons.templates.bs4_do_scrapping import bs4_scrapping
 
 # 직접 구현한 부분을 import 해서 scheduler에 등록
 from devs.api_test_class import api_test_class
@@ -29,15 +29,15 @@ from devs.api_test_class import api_test_class
 # insert collect 에도 네이밍 규칙 필요 
 def register_job_with_mongo(client, ip_add, db_name, col_name, func, insert_data):
     
-    result_data = func(*insert_data)
-
     try:
+        result_data = func(*insert_data)
         if client is None:
             client = MongoClient(ip_add) # 관리 신경써야 함.
         result_list = connect_mongo.insert_recode_in_mongo(client, db_name, col_name, result_data)
         # print(f'insert id list count : {len(result_list.inserted_ids)}')
     except Exception as e :
         print(e)
+        client.close()
 
     return 
 '''
@@ -52,7 +52,8 @@ def main(message):
 
     # ip url tag 등등 최대한 전달 할 수 있도록 
     # log MongoDB 연결 설정
-    mongo_client = MongoClient('mongodb://192.168.0.91:27017/')
+    # mongo_client = MongoClient('mongodb://192.168.0.91:27017/')
+    mongo_client = MongoClient('mongodb://localhost:27017/')
     db = mongo_client['log_database']  # 사용할 데이터베이스 이름
     log_collection = db['logs']  # 사용할 컬렉션 이름
 
@@ -98,6 +99,7 @@ def main(message):
     # 스케쥴러 등록 
     # mongodb 가져올 수 있도록
     ip_add = f'mongodb://192.168.0.91:27017/'
+    ip_add = f'mongodb://localhost:27017/'
     db_name = f'lotte_db_sanghoonlee'
     col_name = f'lotte_col_sanghoonlee' # 안바꾸는게 나을지 
 
@@ -112,11 +114,11 @@ def main(message):
 
     # 여기에 함수 등록 
     # 넘길 변수 없으면 # insert_data = []
-    insert_data = [] # [val1,val2,val3]
+    insert_data = [url] # [val1,val2,val3]
     
     func_list = [
         {"func" : bs4_scrapping.do_scrapping, "args" : insert_data},
-        {"func" : api_test_class.api_test_func,  "args" : insert_data}
+        {"func" : api_test_class.api_test_func,  "args" : []}
     ]
 
     # working function 등록
@@ -125,15 +127,17 @@ def main(message):
     # 특정 시간 몰릴 때 어떻게 할 수 있을 지 
     for func in func_list:
         scheduler.add_job(register_job_with_mongo, 
-                        trigger='cron', # 데일리 특정시간 단위 
-                        year='*',        # 매년
-                        month='*',       # 매월
-                        day='*',         # 매일
-                        week='*',        # 매주
-                        day_of_week='*', # 모든 요일
-                        hour=12,         # 매일 12시에 실행
-                        minute=0,        # 매일 12시 0분에 실행
-                        second=0,        # 매일 12시 0분 0초에 실행
+                        # trigger='cron', # 데일리 특정시간 단위 
+                        # year='*',        # 매년
+                        # month='*',       # 매월
+                        # day='*',         # 매일
+                        # week='*',        # 매주
+                        # day_of_week='*', # 모든 요일
+                        # hour=12,         # 매일 12시에 실행
+                        # minute=0,        # 매일 12시 0분에 실행
+                        # second=0,        # 매일 12시 0분 0초에 실행
+                        trigger='interval',
+                        seconds=5,
                         coalesce=True, 
                         max_instances=1,
                         id = '', # 특정 이름을 주어야 함? 

@@ -5,9 +5,9 @@ from commons.api_send_requester import ApiRequester
 class api_test_class:
     def api_test_func():
         # api
-        city_list = ['도쿄','괌','모나코']
+        city_list = ['tokyo']
         key_list = ['lat', 'lon']
-        pub_key = '39fb7b1c6d4e11e7483aabcb737ce7b0'
+        pub_key = '94e06b4441ef9588585af065e2b72b40'
         result_cont = []
         for city in city_list:
             base_url = f'https://api.openweathermap.org/geo/1.0/direct'
@@ -18,7 +18,7 @@ class api_test_class:
 
             result_geo = ApiRequester.send_api(base_url, params, key_list)
 
-            base_url = f'https://pro.openweathermap.org/data/2.5/weather'
+            base_url = f'https://api.openweathermap.org/data/2.5/forecast'
             
             params_w = {}
             for geo in result_geo:
@@ -31,25 +31,6 @@ class api_test_class:
             # print(result_cont)
         return result_cont
 
-
-    # # 아직 실행 안됨 
-    # # selenium
-    # webdriver_manager_directory = ChromeDriverManager().install() # 딱 한번 수행이라 밖에
-    # # ChromeDriver 실행
-    # browser = webdriver.Chrome(service=ChromeService(webdriver_manager_directory))
-    # # try - finally 자원 관리 필요 
-    # try:
-    #     case_data = iframe_test.run(browser)
-    # except Exception as e :
-    #     print(e)
-    # finally:
-    #     browser.quit()
-
-    # bs4
-    # url = f'http://underkg.co.kr/news'
-    # news_datas = bs4_scrapping.do_scrapping(url)
-
-    # 각 단위 테스트 할 수 있게 각각 main template 넣어 주기 
 if __name__ == "__main__":
     api_test_class.api_test_func()
     pass
