@@ -77,7 +77,7 @@ def main(message):
 
     # 스케쥴러 등록 
     # mongodb 가져올 수 있도록
-    ip_add = f'mongodb://192.168.0.91:27017/'
+    ip_add = f'mongodb://192.168.0.135:27017/'
     db_name = f'lotte_db_sanghoonlee'
     col_name = f'lotte_col_sanghoonlee'
 
