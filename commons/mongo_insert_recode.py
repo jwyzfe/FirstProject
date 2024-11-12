@@ -10,7 +10,7 @@ class connect_mongo:
         collection = db[collectionname]
 
         # 현재 시간 기록
-        current_time = datetime.now()
+        current_time = datetime.now() # 왜 3시간 느리지 mac이라서? 
 
         # 데이터 입력
         if isinstance(input_list, pd.DataFrame):
