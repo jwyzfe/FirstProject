@@ -97,6 +97,35 @@ def main(message):
         {"func" : api_test_class.api_test_func,  "args" : insert_data}
     ]
 
+    '''
+    # 여기에 함수 등록 
+    # 넘길 변수 없으면 # insert_data = []
+    insert_data = [url] # [val1,val2,val3]
+    
+    func_list = [
+        {"func" : bs4_scrapping.do_scrapping, "args" : insert_data},
+        {"func" : api_test_class.api_test_func,  "args" : []}
+    ]
+
+    # working function 등록
+    # id에 함수명 같은거 넣으면 나중에 어느 함수에서 문제 있었는지 알 수 있을 듯
+    # 데일리 시간 단위 그래서 필요한 시간대 를 셋팅할 수 있게 
+    # 특정 시간 몰릴 때 어떻게 할 수 있을 지 
+    for func in func_list:
+        scheduler.add_job(register_job_with_mongo, 
+                        # trigger='cron', # 데일리 특정시간 단위 
+                        # year='*',        # 매년
+                        # month='*',       # 매월
+                        # day='*',         # 매일
+                        # week='*',        # 매주
+                        # day_of_week='*', # 모든 요일
+                        # hour=12,         # 매일 12시에 실행
+                        # minute=0,        # 매일 12시 0분에 실행
+                        # second=0,        # 매일 12시 0분 0초에 실행
+                        trigger='interval',
+                        seconds=5,
+    
+    '''
     # working function 등록
     # id에 함수명 같은거 넣으면 나중에 어느 함수에서 문제 있었는지 알 수 있을 듯
     for func in func_list:
