@@ -34,3 +34,9 @@ class bs4_scrapping:
             }
             results.append(news_data)   
         return results
+    
+
+if __name__ == '__main__':
+    url = f'http://underkg.co.kr/news'
+    bs4_scrapping.do_scrapping(url)
+    pass

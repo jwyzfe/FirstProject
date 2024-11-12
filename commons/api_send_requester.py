@@ -6,7 +6,7 @@ class ApiRequester:
     def send_api(base_url, params, keys = None):
         response = requests.get(base_url, params=params)
         print(response.status_code)
-        if response.status_code == 200 :
+        if response.status_code == 200 : # 정부데이터 포탈 경우 처럼 더 예외처리 해야함.!! 
             if response.text !='[]' :
                 content = json.loads(response.content)
 
