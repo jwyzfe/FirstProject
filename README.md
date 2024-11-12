@@ -41,22 +41,18 @@
 - `main.py` 파일은 프로그램의 진입점으로, `devs`와 `commons`에서 구현한 기능들을 등록하고 실행하는 역할을 합니다.
 - 스케줄러를 설정하고, 주기적으로 작업을 수행하도록 합니다. MongoDB에 로그를 저장하는 기능도 포함되어 있습니다.
 
-## 작성 방법
+## 작성 방법 -- branch 랑 같이 생각 해야 해
 
 1. **devs** 폴더에서 `commons`의 기능을 import하여 구체적인 로직을 추가합니다.
 2. **schedulers/main.py**에서 **devs** 에서 작성한 함수를 스케줄러에 등록하여 주기적으로 작업을 수행합니다.
 
 ## 실행 방법
 
-1. 필요한 패키지를 설치합니다.
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-2. `main.py`를 실행하여 스케줄러를 시작합니다.
+1. `main.py`를 실행하여 스케줄러를 시작합니다.
    ```bash
    python schedulers/main.py
    ```
+
 
 ## 라이센스
 

@@ -3,7 +3,7 @@
 from commons.api_send_requester import ApiRequester
 
 class api_test_class:
-    def api_test_func(test):
+    def api_test_func():
         # api
         city_list = ['도쿄','괌','모나코']
         key_list = ['lat', 'lon']
@@ -48,3 +48,8 @@ class api_test_class:
     # bs4
     # url = f'http://underkg.co.kr/news'
     # news_datas = bs4_scrapping.do_scrapping(url)
+
+    # 각 단위 테스트 할 수 있게 각각 main template 넣어 주기 
+if __name__ == "__main__":
+    api_test_class.api_test_func()
+    pass
