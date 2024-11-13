@@ -11,7 +11,7 @@ from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service as ChromeService
 
-# 직접 만든 class 
+# 직접 만든 class나 func을 참조하려면 꼭 필요 => main processor가 경로를 잘 몰라서 알려주어야함.
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -68,8 +68,8 @@ def run():
     # 스케쥴러 등록 
     # mongodb 가져올 수 있도록
     ip_add = f'mongodb://localhost:27017/'
-    db_name = f'db_name' # db name 바꾸기
-    col_name = f'collection_name' # collection name 바꾸기
+    db_name = f'DB_SGMN' # db name 바꾸기
+    col_name = f'COLLECTION_NAME' # collection name 바꾸기
 
     # MongoDB 서버에 연결 
     client = MongoClient(ip_add) 

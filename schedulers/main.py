@@ -83,8 +83,8 @@ def main(message):
 
     # 스케쥴러 등록 
     ip_add = 'mongodb://localhost:27017/'
-    db_name = 'lotte_db_sanghoonlee'
-    col_name = 'lotte_col_sanghoonlee' 
+    db_name = 'DB_SGMN'
+    col_name = 'COLLECTION_NAME' 
 
     # MongoDB 서버에 연결
     client = MongoClient(ip_add)  # 관리 신경써야 함.
