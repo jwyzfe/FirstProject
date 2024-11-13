@@ -145,14 +145,15 @@ symbols = [
 class api_stockprice_yfinance:
     def api_test_func(symbol_list):
         return_histlist = []
-        for symbol in symbol_list:
+        for symbol in symbol_list[:2]:
             msft = yf.Ticker(symbol) # "MSFT"
             # get all stock info
             msft.info
 
             # get historical market data
             hist = msft.history(period="max")
-            if hist :
+            if hist is not None and not hist.empty:  # hist가 None이 아니고 비어있지 않은 경우
+                hist['symbol'] = symbol  # 'symbol' 컬럼 추가
                 return_histlist.append(hist)
         # print(hist)
 
@@ -207,12 +208,12 @@ if __name__ == "__main__":
     "HII", "WYNN", "BWA", "MHK", "BF.B", "FMC", "DVA", "PARA", "WBA", "BEN",
     "QRVO", "FOX", "AMTM", "NWS"
     ]
-    result_list = api_stockprice_yfinance.api_test_func(symbol_list=symbols[:10])
+    result_list = api_stockprice_yfinance.api_test_func(symbol_list=symbols)
 
     # 스케쥴러 등록 
     # mongodb 가져올 수 있도록
     ip_add = f'mongodb://localhost:27017/'
-    db_name = f'DB_NAME' # db name 바꾸기
+    db_name = f'DB_SGMN' # db name 바꾸기
     col_name = f'collection_name' # collection name 바꾸기
 
     # MongoDB 서버에 연결 

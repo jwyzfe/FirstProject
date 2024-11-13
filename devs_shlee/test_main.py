@@ -5,6 +5,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from pymongo import MongoClient
 # time.sleep
 import time
+from datetime import datetime, timedelta  
 
 # selenium driver 
 from selenium import webdriver
@@ -63,12 +64,17 @@ def register_job_with_mongo(client, ip_add, db_name, col_name, func, insert_data
 
     return 
 
+def chunk_list(lst, n):
+    """리스트를 n 크기로 나누는 제너레이터 함수"""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+        
 def run():
 
     # 스케쥴러 등록 
     # mongodb 가져올 수 있도록
     ip_add = f'mongodb://localhost:27017/'
-    db_name = f'DB_NAME' # db name 바꾸기
+    db_name = f'DB_SGMN' # db name 바꾸기
     col_name = f'collection_name' # collection name 바꾸기
 
     # MongoDB 서버에 연결 
@@ -128,24 +134,71 @@ def run():
     "HII", "WYNN", "BWA", "MHK", "BF.B", "FMC", "DVA", "PARA", "WBA", "BEN",
     "QRVO", "FOX", "AMTM", "NWS"
     ]
-    insert_data = [symbols] # [val1,val2,val3]
+    # insert_data = [symbols] # [val1,val2,val3]
     
-    func_list = [
-        # {"func" : bs4_scrapping.do_scrapping, "args" : insert_data},
-        {"func" : api_stockprice_yfinance.api_test_func,  "args" : insert_data}
-    ]
+    # func_list = [
+    #     # {"func" : bs4_scrapping.do_scrapping, "args" : insert_data},
+    #     {"func" : api_stockprice_yfinance.api_test_func,  "args" : insert_data}
+    # ]
 
-    for func in func_list:
-        scheduler.add_job(register_job_with_mongo,                         
-                        trigger='interval',
-                        seconds=30, # 5초 마다 반복 
-                        coalesce=True, 
-                        max_instances=1,
-                        id=func['func'].__name__, # 독립적인 함수 이름 주어야 함.
-                        # args=[args_list]
-                        args=[client, ip_add, db_name, col_name, func['func'], func['args']] # 
+    # 심볼 리스트를 50개씩 나누기
+    batch_size = 10  # 한 번에 처리할 심볼 수
+    symbol_batches = list(chunk_list(symbols, batch_size))
+
+    # 각 배치별로 func_list 생성
+    func_list = []
+    for symbol_batch in symbol_batches:
+        func_list.append({
+            "func": api_stockprice_yfinance.api_test_func,
+            "args": [symbol_batch]  # 각 배치를 리스트로 감싸서 전달
+        })
+
+    # 각 func에 대해 스케줄 등록
+    for index, func in enumerate(func_list):
+        # 각 배치마다 시작 시간을 조금씩 다르게 설정 (30초 간격)
+        start_date = datetime.now() + timedelta(seconds=30 * index)
+        
+        scheduler.add_job(
+            register_job_with_mongo,
+            trigger='interval',
+            seconds=180,  # 3분마다 반복
+            start_date=start_date,  # 시작 시간을 다르게 설정
+            coalesce=True,
+            max_instances=1,
+            id=f"{func['func'].__name__}_{index}",  # 기존 ID 형식 유지
+            args=[client, ip_add, db_name, col_name, func['func'], func['args']]  # 기존 args 구조 유지
+        )
+        print(f"Scheduled {func['func'].__name__} batch {index} with {len(func['args'][0])} symbols, starting at {start_date}")
+
+    # 실패한 작업을 다시 시도하는 로직
+    def retry_failed_jobs():
+        print("Checking for skipped jobs...")
+        for job in scheduler.get_jobs():
+            if job.id.startswith(f"{api_stockprice_yfinance.api_test_func.__name__}"):
+                try:
+                    # 작업 상태 확인
+                    if job.next_run_time is not None:
+                        print(f"Checking job {job.id}")
+                        # 작업을 즉시 실행
+                        retry_id = f"retry_{job.id}_{int(time.time())}"
+                        scheduler.add_job(
+                            register_job_with_mongo,
+                            trigger='date',  # 즉시 실행
+                            id=retry_id,
+                            args=job.args,
+                            replace_existing=True
                         )
-    
+                except Exception as e:
+                    print(f"Error checking job {job.id}: {e}")
+
+    # 실패한 작업을 주기적으로 재시도
+    scheduler.add_job(
+        retry_failed_jobs, 
+        trigger='interval', 
+        seconds=60,  # 1분마다 확인
+        id='retry_job_checker'
+    )
+
     
     scheduler.start()
 
