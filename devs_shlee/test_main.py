@@ -25,30 +25,6 @@ from commons.templates.bs4_do_scrapping import bs4_scrapping
 # 직접 구현한 부분을 import 해서 scheduler에 등록
 from devs_shlee.api_stockprice_yfinance import api_stockprice_yfinance
 
-def api_test_func():
-    # api
-    city_list = ['도쿄','괌','모나코']
-    key_list = ['lat', 'lon']
-    pub_key = '39fb7b1c6d4e11e7483aabcb737ce7b0'
-    for city in city_list:
-        base_url = f'https://api.openweathermap.org/geo/1.0/direct'
-        
-        params={}
-        params['q'] = city
-        params['appid'] = pub_key
-
-        result_geo = ApiRequester.send_api(base_url, params, key_list)
-
-        base_url = f'https://api.openweathermap.org/data/2.5/forecast'
-        
-        params_w = {}
-        for geo in result_geo:
-            for key in key_list:
-                params_w[key] = geo[key]
-        params_w['appid'] = pub_key
-        result_cont = ApiRequester.send_api(base_url, params_w)
-
-        print(result_cont)
 
 # common 에 넣을 예정
 def register_job_with_mongo(client, ip_add, db_name, col_name, func, insert_data):
@@ -86,54 +62,6 @@ def run():
 
     # 여기에 함수 등록 
     # 넘길 변수 없으면 # insert_data = []
-    symbols = [
-    "NVDA", "AAPL", "MSFT", "AMZN", "META", "GOOGL", "TSLA", "GOOG", "BRK.B", "AVGO",
-    "JPM", "LLY", "UNH", "XOM", "V", "MA", "COST", "HD", "PG", "JNJ",
-    "WMT", "NFLX", "CRM", "BAC", "ABBV", "ORCL", "CVX", "MRK", "WFC", "KO",
-    "AMD", "CSCO", "PEP", "ACN", "ADBE", "LIN", "MCD", "NOW", "TMO", "ABT",
-    "GE", "TXN", "IBM", "INTU", "PM", "CAT", "GS", "ISRG", "QCOM", "DIS",
-    "AMGN", "CMCSA", "VZ", "BKNG", "MS", "RTX", "AXP", "SPGI", "T", "LOW",
-    "DHR", "AMAT", "NEE", "PGR", "UBER", "PFE", "ETN", "UNP", "BLK", "HON",
-    "TJX", "C", "BX", "BSX", "COP", "SYK", "VRTX", "PANW", "ADP", "FI",
-    "PLTR", "BMY", "LMT", "MU", "TMUS", "SCHW", "VICI", "WEC", "AON", "MSI",
-    "CDNS", "WM", "CME", "CMG", "GD", "ZTS", "MCK", "USB", "WELL", "CRWD",
-    "TDG", "CTAS", "EOG", "CL", "MCO", "CEG", "ITW", "EMR", "NOC", "MMM",
-    "COF", "ORLY", "TGT", "CSX", "CVS", "APD", "WMB", "BDX", "ADSK", "MAR",
-    "HCA", "FDX", "GM", "FCX", "AJG", "CARR", "OKE", "ECL", "SLB", "TFC",
-    "FTNT", "HLT", "NSC", "PCAR", "ROP", "ABNB", "TRV", "SRE", "URI", "BK",
-    "JCI", "NXPI", "FICO", "DLR", "AFL", "RCL", "SPG", "AMP", "GWW", "AZO",
-    "PSX", "PSA", "KMI", "MPC", "ALL", "AEP", "O", "LHX", "VST", "CPRT",
-    "CMI", "DHI", "D", "PWR", "NEM", "AIG", "FIS", "FAST", "MET", "PAYX",
-    "ROST", "TEL", "MSCI", "HWM", "DFS", "KVUE", "CCI", "PCG", "KMB", "PRU",
-    "AME", "VLO", "AXON", "F", "BKR", "PEG", "ODFL", "COR", "RSG", "TRGP",
-    "IR", "IT", "LEN", "CBRE", "DAL", "OTIS", "VRSK", "CTVA", "CTSH", "EW",
-    "DELL", "KR", "MNST", "HES", "A", "GEHC", "VMC", "CHTR", "YUM", "EXC",
-    "SYY", "EA", "XEL", "NUE", "GLW", "MLM", "ACGL", "IQV", "MCHP", "KDP",
-    "STZ",
-    "HPQ", "LULU", "RMD", "IDXX", "MTB", "GIS", "WAB", "EXR", "DD", "HIG",
-    "IRM", "OXY", "ED", "HUM", "FANG", "EFX", "AVB", "NDAQ", "VICI", "GRMN",
-    "DOW", "EIX", "ETR", "WTW", "CNC", "FITB", "MPWR", "ROK", "WEC", "CSGP",
-    "EBAY", "TSCO", "XYL", "ANSS", "RJF", "ON", "CAH", "UAL", "GPN", "TTWO",
-    "PPG", "STT", "KHC", "HPE", "KEYS", "NVR", "DXCM", "DOV", "PHM", "LDOS",
-    "DECK", "VTR", "FTV", "HAL", "BRO", "MTD", "CDW", "BR", "CHD", "HSY",
-    "TROW", "TYL", "EQT", "AWK", "SYF", "CPAY", "GDDY", "SW", "VLTO", "HBAN",
-    "EQR", "NTAP", "BIIB", "ADM", "HUBB", "CCL", "DTE", "PPL", "AEE", "DVN",
-    "RF", "WST", "SBAC", "CINF", "IFF", "PTC", "EXPE", "TDY", "WY", "ATO",
-    "WAT", "ZBH", "LYB", "WDC", "STE", "ES", "K", "PKG", "NTRS", "STX",
-    "BLDR", "FE", "STLD", "CBOE", "CFG", "WBD", "ZBRA", "FSLR", "COO", "CMS",
-    "LH", "CLX", "MAS", "BBY", "PNR", "BAX", "IEX", "ARE", "GPC", "KIM",
-    "EXPD", "TSN", "DG", "TXT", "AVY", "GEN", "NI", "MRO", "EG", "JBHT",
-    "ALGN", "DOC", "DPZ", "VTRS", "VRSN", "JBL", "LNT", "CF", "L", "EL",
-    "AMCR", "RVTY", "APTV", "EVRG", "MRNA", "POOL", "ROL", "NDSN", "FFIV",
-    "SWKS", "SWK", "EPAM", "AKAM", "UDR", "CAG", "INCY", "CPT", "ALB", "JKHY",
-    "CHRW", "JNPR", "HST", "DAY", "ALLE", "BG", "UHS", "DLTR", "NCLH", "SJM",
-    "REG", "KMX", "EMN", "BXP", "TPR", "TECH", "GNRC", "SMCI", "LW", "CRL",
-    "IPG", "PAYC", "NWSA", "AIZ", "CTLT", "TAP", "ERIE", "PNW", "LKQ", "MKTX",
-    "FOXA", "SOLV", "AES", "GL", "TFX", "AOS", "MOS", "HRL", "CPB", "CZR",
-    "HSIC", "FRT", "ENPH", "CE", "RL", "MGM", "HAS", "MTCH", "IVZ", "APA",
-    "HII", "WYNN", "BWA", "MHK", "BF.B", "FMC", "DVA", "PARA", "WBA", "BEN",
-    "QRVO", "FOX", "AMTM", "NWS"
-    ]
     # insert_data = [symbols] # [val1,val2,val3]
     
     # func_list = [
@@ -142,7 +70,7 @@ def run():
     # ]
 
     # 심볼 리스트를 50개씩 나누기
-    batch_size = 10  # 한 번에 처리할 심볼 수
+    batch_size = 60  # 한 번에 처리할 심볼 수 약 48초?
     symbol_batches = list(chunk_list(symbols, batch_size))
 
     # 각 배치별로 func_list 생성
@@ -169,35 +97,6 @@ def run():
             args=[client, ip_add, db_name, col_name, func['func'], func['args']]  # 기존 args 구조 유지
         )
         print(f"Scheduled {func['func'].__name__} batch {index} with {len(func['args'][0])} symbols, starting at {start_date}")
-
-    # 실패한 작업을 다시 시도하는 로직
-    def retry_failed_jobs():
-        print("Checking for skipped jobs...")
-        for job in scheduler.get_jobs():
-            if job.id.startswith(f"{api_stockprice_yfinance.api_test_func.__name__}"):
-                try:
-                    # 작업 상태 확인
-                    if job.next_run_time is not None:
-                        print(f"Checking job {job.id}")
-                        # 작업을 즉시 실행
-                        retry_id = f"retry_{job.id}_{int(time.time())}"
-                        scheduler.add_job(
-                            register_job_with_mongo,
-                            trigger='date',  # 즉시 실행
-                            id=retry_id,
-                            args=job.args,
-                            replace_existing=True
-                        )
-                except Exception as e:
-                    print(f"Error checking job {job.id}: {e}")
-
-    # 실패한 작업을 주기적으로 재시도
-    scheduler.add_job(
-        retry_failed_jobs, 
-        trigger='interval', 
-        seconds=60,  # 1분마다 확인
-        id='retry_job_checker'
-    )
 
     
     scheduler.start()
