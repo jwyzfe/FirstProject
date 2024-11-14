@@ -5,6 +5,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from pymongo import MongoClient
 # time.sleep
 import time
+# 
+import pandas as pd
 
 # selenium driver 
 from selenium import webdriver
@@ -16,13 +18,15 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
                 
-from commons.mongo_insert_recode import connect_mongo
+from commons.mongo_insert_recode import connect_mongo as connect_mongo_insert
 from commons.api_send_requester import ApiRequester
 from commons.templates.sel_iframe_courtauction import iframe_test
 from commons.templates.bs4_do_scrapping import bs4_scrapping
+from commons.mongo_find_recode import connect_mongo as connect_mongo_find
 
 # 직접 구현한 부분을 import 해서 scheduler에 등록
 from devs.api_test_class import api_test_class
+from devs.api_yfinance_stockprice import api_stockprice_yfinance 
 
 def api_test_func():
     # api
@@ -49,15 +53,41 @@ def api_test_func():
 
         print(result_cont)
 
+
 # common 에 넣을 예정
-def register_job_with_mongo(client, ip_add, db_name, col_name, func, insert_data):
+def register_job_with_mongo(client, ip_add, db_name, col_name_work, col_name_dest, func, insert_data):
 
     try:
-        result_data = func(*insert_data)
+        symbols = connect_mongo_find.get_unfinished_ready_records(client, db_name, col_name_work)
+        
+        # 60개씩 제한
+        BATCH_SIZE = 40
+        symbols_batch = symbols.head(BATCH_SIZE)  # 처음 60개만 선택
+        
+        # symbol 컬럼만 리스트로 변환
+        symbol_list = symbols_batch['symbol'].tolist()
+
+        # 선택된 symbol 처리
+        result_data = func(symbol_list)
         if client is None:
-            client = MongoClient(ip_add) # 관리 신경써야 함.
-        result_list = connect_mongo.insert_recode_in_mongo(client, db_name, col_name, result_data)       # print(f'insert id list count : {len(result_list.inserted_ids)}')
-    except Exception as e :
+            client = MongoClient(ip_add)
+        result_list = connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name_dest, result_data)
+    
+        # 처리된 60개의 symbol에 대해서만 상태 업데이트
+        update_data_list = []
+        for _, row in symbols_batch.iterrows():
+            update_data = {
+                'ref_id': row['_id'],  # 원본 레코드의 ID를 참조 ID로 저장
+                'iswork': 'fin',
+                'symbol': row['symbol']
+            }
+            update_data_list.append(update_data)
+
+        if client is None:
+            client = MongoClient(ip_add)
+        result_list = connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name_work, update_data_list)
+
+    except Exception as e:
         print(e)
         client.close()
 
@@ -67,9 +97,10 @@ def run():
 
     # 스케쥴러 등록 
     # mongodb 가져올 수 있도록
-    ip_add = f'mongodb://localhost:27017/'
-    db_name = f'db_name' # db name 바꾸기
-    col_name = f'collection_name' # collection name 바꾸기
+    ip_add = f'mongodb://192.168.0.91:27017/'
+    db_name = f'DB_SGMN' # db name 바꾸기
+    col_name_work = f'COL_STOCKPRICE_WORK' # collection name 바꾸기
+    col_name_dest = f'COL_STOCKPRICE_HISTORY' # collection name 바꾸기
 
     # MongoDB 서버에 연결 
     client = MongoClient(ip_add) 
@@ -83,19 +114,19 @@ def run():
     insert_data = [url] # [val1,val2,val3]
     
     func_list = [
-        {"func" : bs4_scrapping.do_scrapping, "args" : insert_data},
-        {"func" : api_test_class.api_test_func,  "args" : []}
+        {"func" : api_stockprice_yfinance.api_test_func, "args" : []}
+        # {"func" : api_test_class.api_test_func,  "args" : []}
     ]
 
     for func in func_list:
         scheduler.add_job(register_job_with_mongo,                         
                         trigger='interval',
-                        seconds=5, # 5초 마다 반복 
+                        seconds=50, # 5초 마다 반복 
                         coalesce=True, 
                         max_instances=1,
                         id=func['func'].__name__, # 독립적인 함수 이름 주어야 함.
                         # args=[args_list]
-                        args=[client, ip_add, db_name, col_name, func['func'], func['args']] # 
+                        args=[client, ip_add, db_name, col_name_work, col_name_dest, func['func'], func['args']] # 
                         )
     
     
