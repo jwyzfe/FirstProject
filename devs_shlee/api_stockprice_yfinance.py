@@ -120,11 +120,13 @@ if __name__ == "__main__":
     # MongoDB 서버에 연결 
     client = MongoClient(ip_add)
 
-    symbols = connect_mongo_find.read_records(client, db_name, col_name)
+    symbols = connect_mongo_find.get_records_dataframe(client, db_name, col_name)
 
-    result_list = api_stockprice_yfinance.api_test_func(symbol_list=symbols[:1])
+    # symbol 컬럼만 리스트로 변환
+    symbol_list = symbols['symbol'].tolist()
+    result_list = api_stockprice_yfinance.api_test_func(symbol_list=symbol_list[:1])
 
-    col_name = f'COL_STOCK_PRICE_HISTORY' # 데이터 읽을 collection
+    col_name = f'COL_STOCK_PRICE_HISTORY' # 데이터 쓸 collection
     connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name, result_list)
 
     pass
