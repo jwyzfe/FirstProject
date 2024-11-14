@@ -5,7 +5,6 @@ import xml.etree.ElementTree as ET
 import xmltodict
 import json
 
-
 class dart_financials_class:
 
 
@@ -32,7 +31,7 @@ class dart_financials_class:
         
     def get_cor_first_info(corp_code):
         # 요청 URL과 인증키 설정
-        first_list = [] 
+
         url = "https://opendart.fss.or.kr/api/company.json"
         api_key = "19307cd5ad804dd73f156678b8b4cffa1d83122e"
         # 파라미터 설정
@@ -49,10 +48,9 @@ class dart_financials_class:
             
         if response.status_code == 200: # 값이 오류가 나지 않으면
             contents = json.loads(response.text)
-            first_list.append(contents)
-            final_of_first_list = first_list['jurir_no']
-            pass
-        return final_of_first_list
+            final_of_first = contents['jurir_no']
+            
+            return final_of_first
     
     def get_cor_second_info(final_of_first_list):
         # 요청 URL과 인증키 설정
@@ -100,6 +98,7 @@ class dart_financials_class:
                                 #     f.write(json_data)
                                 #     print("JSON 파일이 test.json으로 저장")
                                 cor_code_list.append(dart_financials_class.get_cor_first_info(corp_code))
+
 
         return
 
