@@ -101,7 +101,7 @@ class dart_financials_class:
                                 #     print("JSON 파일이 test.json으로 저장")
                                 cor_code_list.append(dart_financials_class.get_cor_first_info(corp_code))
 
-        return final_list
+        return
 
 
 
