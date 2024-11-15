@@ -12,3 +12,6 @@ test.xml
 data/
 rawData/*.json
 rawData/*.csv
+/csv
+stocksClovatestSentiment.py
+stockSentiment_withNaverClova.py

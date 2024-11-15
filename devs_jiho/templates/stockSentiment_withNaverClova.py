@@ -44,8 +44,8 @@ def scrappingYoutubeComments(): #스크래핑 1번째
 
 def sentimentClova(firstthing): #해석 2번째
     uri = f'https://naveropenapi.apigw.ntruss.com/sentiment-analysis/v1/analyze'
-    itsHeaders = {'X-NCP-APIGW-API-KEY-ID':'0o3lns30e9','X-NCP-APIGW-API-KEY':
-                  'an8HwGaZTa3OA0cgHQ9kWUbP4eT3RvPVk1z3mN0T','Content-Type':'application/json'}
+    itsHeaders = {'X-NCP-APIGW-API-KEY-ID':'???','X-NCP-APIGW-API-KEY':
+                  '???','Content-Type':'application/json'}
     itsBodies = {"content" : firstthing[0]["Comment_Text"]} # 도큐멘트에 뭐라고 적혀있고 무엇을 넣어야지 되는지 자세히 알아볼것 
     response = requests.post(url=uri, headers=itsHeaders, data=json.dumps(itsBodies))
     itsContents = json.loads(response.text)

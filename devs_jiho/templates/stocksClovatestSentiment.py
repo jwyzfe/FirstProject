@@ -84,8 +84,8 @@ def get_toss_comments(stock_code):
 def analyze_sentiment(comment_text):
     uri = 'https://naveropenapi.apigw.ntruss.com/sentiment-analysis/v1/analyze'
     headers = {
-        'X-NCP-APIGW-API-KEY-ID': '0o3lns30e9',
-        'X-NCP-APIGW-API-KEY': 'an8HwGaZTa3OA0cgHQ9kWUbP4eT3RvPVk1z3mN0T',
+        'X-NCP-APIGW-API-KEY-ID': '???',
+        'X-NCP-APIGW-API-KEY': '???',
         'Content-Type': 'application/json'
     }
     body = {"content": comment_text}
