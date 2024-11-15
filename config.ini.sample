@@ -15,3 +15,7 @@ X-Naver-Client-Id = client id
 X-Naver-Client-Secret = client secret
 
 
+[mongoDB]
+ip = mongodb://localhost:27017/
+
+
