@@ -1,13 +1,11 @@
 import time
 import requests
 from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 
-def main():
+def yahoo_scrapping():
     # ChromeDriver 설정
     options = webdriver.ChromeOptions()
     options.add_argument('--headless')  # 브라우저 창을 띄우지 않음 (백그라운드 실행)
@@ -16,10 +14,10 @@ def main():
     # Yahoo Finance 페이지 열기
     driver.get('https://finance.yahoo.com/topic/stock-market-news/')
     
-    # 스크롤을 내리면서 기사를 100개 정도 가져오기
+    # 스크롤을 내리면서 기사를 30개 정도 가져오기
     news_data = []  # 뉴스 데이터를 담을 리스트 초기화
     count = 0  # 기사의 개수 세기
-    while count < 30:
+    while count < 10:
         # 페이지가 로드될 때까지 기다리기
         time.sleep(2)
         
@@ -61,7 +59,7 @@ def main():
             news_data.append(news_item)  # 리스트에 딕셔너리 추가
             count += 1  # 기사의 개수 증가
 
-            if count >= 30:
+            if count >= 10:
                 break
         
         # 스크롤 내리기 (페이지 맨 아래로)
@@ -81,4 +79,4 @@ def main():
     driver.quit()  # 브라우저 종료
 
 if __name__ == '__main__':
-    main()
+    yahoo_scrapping()  # 함수 호출
