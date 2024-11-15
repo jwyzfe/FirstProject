@@ -1,5 +1,6 @@
 import pandas as pd
 from datetime import datetime 
+import pytz
 
 class connect_mongo:
     def insert_recode_in_mongo(client, dbname, collectionname, input_list):
@@ -10,7 +11,7 @@ class connect_mongo:
         collection = db[collectionname]
 
         # 현재 시간 기록
-        current_time = datetime.now() # 왜 3시간 느리지 mac이라서? 
+        current_time = datetime.now(pytz.timezone('Asia/Seoul')) # 왜 3시간 느리지 mac이라서? 
 
         # 데이터 입력
         if isinstance(input_list, pd.DataFrame):

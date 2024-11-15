@@ -1,5 +1,10 @@
 
 # 공통 부분을 import 하여 구현
+# 직접 만든 class나 func을 참조하려면 꼭 필요 => main processor가 경로를 잘 몰라서 알려주어야함.
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from commons.api_send_requester import ApiRequester
 
 class api_test_class:
