@@ -17,7 +17,7 @@ def main():
         soup_content = BeautifulSoup(respone_content.text, 'html.parser')
 
         
-        content = soup_content.select_one('#nimbus-app > section > section > section > article > div > div.article-wrap.no-bb > div.body-wrap.yf-i23rhs')
+        content = soup_content.select_one('div.body-wrap.yf-i23rhs')
         
         if content:  # 본문이 있을 경우에만 제목과 본문 출력
             print(f'title : {title_link.text.strip()}')
@@ -25,7 +25,7 @@ def main():
             print(f'content : {content.text.strip()}')
             print(f'--' * 10)
         else:
-            print(f' ')
+            print(f' ') #본문 없을땐 공백 출력
             print(f'--' * 10)
 
 if __name__ == '__main__':
