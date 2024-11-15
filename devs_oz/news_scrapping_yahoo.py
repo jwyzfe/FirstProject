@@ -1,32 +1,84 @@
+import time
 import requests
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 
 def main():
-    respone = requests.get(f'https://finance.yahoo.com/topic/stock-market-news/')
-    soup = BeautifulSoup(respone.text, 'html.parser')
-    titles_link = soup.select('#Fin-Stream > ul > li h3 > a')
+    # ChromeDriver 설정
+    options = webdriver.ChromeOptions()
+    options.add_argument('--headless')  # 브라우저 창을 띄우지 않음 (백그라운드 실행)
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
-    for title_link in titles_link:
-        news_content_url = title_link.attrs['href']
+    # Yahoo Finance 페이지 열기
+    driver.get('https://finance.yahoo.com/topic/stock-market-news/')
+    
+    # 스크롤을 내리면서 기사를 100개 정도 가져오기
+    news_data = []  # 뉴스 데이터를 담을 리스트 초기화
+    count = 0  # 기사의 개수 세기
+    while count < 30:
+        # 페이지가 로드될 때까지 기다리기
+        time.sleep(2)
         
-        # Full URL로 연결 (상대 경로일 경우)
-        if news_content_url.startswith('/'):
-            news_content_url = 'https://finance.yahoo.com' + news_content_url
+        # 현재 페이지의 HTML 가져오기
+        soup = BeautifulSoup(driver.page_source, 'html.parser')
         
-        respone_content = requests.get(news_content_url)
-        soup_content = BeautifulSoup(respone_content.text, 'html.parser')
+        # 뉴스 제목 링크 찾기
+        titles_link = soup.select('#Fin-Stream > ul > li h3 > a')
 
+        # 뉴스 제목과 URL 가져오기
+        for title_link in titles_link:
+            news_content_url = title_link.attrs['href']
+            
+            # 상대 경로일 경우 절대 URL로 연결
+            if news_content_url.startswith('/'):
+                news_content_url = 'https://finance.yahoo.com' + news_content_url
+            
+            # 뉴스 기사 페이지 요청
+            respone_content = requests.get(news_content_url)
+            soup_content = BeautifulSoup(respone_content.text, 'html.parser')
+
+            # 본문 추출
+            content = soup_content.select_one('div.body-wrap.yf-i23rhs')
+
+            # 본문이 있을 경우에만 저장
+            if content:
+                news_item = {
+                    "title": title_link.text.strip(),  # 제목
+                    "url": news_content_url,           # 뉴스 URL
+                    "content": content.text.strip()    # 본문
+                }
+            else:
+                news_item = {
+                    "title": title_link.text.strip(),  # 제목
+                    "url": news_content_url,           # 뉴스 URL
+                    "content": "본문을 찾을 수 없습니다."  # 본문이 없으면 메시지 저장
+                }
+            
+            news_data.append(news_item)  # 리스트에 딕셔너리 추가
+            count += 1  # 기사의 개수 증가
+
+            if count >= 30:
+                break
         
-        content = soup_content.select_one('div.body-wrap.yf-i23rhs')
+        # 스크롤 내리기 (페이지 맨 아래로)
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         
-        if content:  # 본문이 있을 경우에만 제목과 본문 출력
-            print(f'title : {title_link.text.strip()}')
-            print(f'news_content_url : {news_content_url}')
-            print(f'content : {content.text.strip()}')
-            print(f'--' * 10)
-        else:
-            print(f' ') #본문 없을땐 공백 출력
-            print(f'--' * 10)
+        # 로딩 시간을 기다리기
+        time.sleep(2)
+    
+    # 결과 출력 (예시)
+    print(f"총 {len(news_data)}개의 기사가 저장되었습니다.")
+    for item in news_data:
+        print(f"Title: {item['title']}")
+        print(f"URL: {item['url']}")
+        print(f"Content: {item['content']}")  # 본문 일부만 출력 (200자)
+        print(f'--' * 10)
+
+    driver.quit()  # 브라우저 종료
 
 if __name__ == '__main__':
     main()
