@@ -9,3 +9,6 @@ venv/
 output.zip
 test.json
 test.xml
+data/
+rawData/*.json
+rawData/*.csv

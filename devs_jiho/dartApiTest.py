@@ -54,13 +54,16 @@ class DartFinancialService:
         
         if response.status_code == 200:
             company_info = json.loads(response.text)
-            return company_info.get('jurir_no')
+            corp_cls = company_info.get('corp_cls')
+            if corp_cls == 'Y':
+                return company_info
+            return None
         return None
 
     def get_financial_statements(self, registration_number):
         financial_statements = []
         FINANCIAL_API_URL = "http://apis.data.go.kr/1160100/service/GetFinaStatInfoService_V2/getBs_V2"
-        FINANCIAL_API_KEY = "stCwIy+LoSZpTsxJ4usyyYV3yWNUePAIHISVLlDaFUMfDQDW77n8maQ0pmOH4aJy25qsGso7nLjNXokXaJDGlQ=="
+        FINANCIAL_API_KEY = "stCwIy%2BLoSZpTsxJ4usyyYV3yWNUePAIHISVLlDaFUMfDQDW77n8maQ0pmOH4aJy25qsGso7nLjNXokXaJDGlQ%3D%3D"
         
         self.logger.info(f"기업 번호 {registration_number}의 재무제표 조회 중...")
         
@@ -263,8 +266,70 @@ class DartFinancialService:
                 self.logger.error(f"{file_path} 처리 중 오류 발생: {str(e)}")
                 continue
 
+    def process_batch(self, batch_number):
+        """특정 배치 번호의 데이터만 처리"""
+        self.logger.info(f"배치 {batch_number} 처리 시작")
+        
+        # 기존 데이터 파일 찾기
+        registration_files = glob.glob(f"{self.OUTPUT_DIR}/registration_numbers_batch_{batch_number}_*.json")
+        
+        if not registration_files:
+            self.logger.error(f"배치 {batch_number}의 registration 파일을 찾을 수 없습니다.")
+            return
+        
+        # 가장 최근 파일 사용
+        latest_file = max(registration_files, key=os.path.getctime)
+        
+        try:
+            with open(latest_file, 'r', encoding='utf-8') as f:
+                companies = json.load(f)
+            
+            self.logger.info(f"배치 {batch_number}에서 {len(companies)}개 기업 데이터를 로드했습니다.")
+            
+            financial_dir = f"{self.OUTPUT_DIR}/financial_statements/batch_{batch_number}"
+            os.makedirs(financial_dir, exist_ok=True)
+            
+            # 각 기업의 재무제표 조회
+            for company in tqdm(companies, desc=f"배치 {batch_number} 재무제표 수집"):
+                reg_number = company['registration_number']
+                corp_code = company['corp_code']
+                
+                # 이미 처리된 파일 확인
+                output_file = f"{financial_dir}/{corp_code}_financial_statements.json"
+                if os.path.exists(output_file):
+                    self.logger.info(f"기업 코드 {corp_code}는 이미 처리되었습니다. 건너뜁니다.")
+                    continue
+                
+                try:
+                    # 재무제표 데이터 수집
+                    financial_data = self.get_financial_statements(reg_number)
+                    
+                    # 결과 저장
+                    if financial_data:
+                        result = {
+                            'corp_code': corp_code,
+                            'registration_number': reg_number,
+                            'financial_statements': financial_data
+                        }
+                        
+                        with open(output_file, 'w', encoding='utf-8') as f:
+                            json.dump(result, f, ensure_ascii=False, indent=2)
+                        
+                        self.logger.info(f"기업 코드 {corp_code}의 재무제표가 저장되었습니다.")
+                    
+                    # API 호출 제한을 위한 딜레이
+                    time.sleep(0.5)
+                    
+                except Exception as e:
+                    self.logger.error(f"기업 코드 {corp_code} 처리 중 오류 발생: {str(e)}")
+                    continue
+                
+        except Exception as e:
+            self.logger.error(f"배치 {batch_number} 처리 중 오류 발생: {str(e)}")
+
 if __name__ == "__main__":
     dart_service = DartFinancialService()
     
-    # 저장된 registration 파일들로부터 재무제표 조회
-    dart_service.get_financial_statements_from_files()
+    # 처리할 배치 번호 지정
+    batch_number = 1  # 원하는 배치 번호로 변경
+    dart_service.process_batch(batch_number)
