@@ -28,6 +28,7 @@ from commons.mongo_find_recode import connect_mongo as connect_mongo_find
 from devs.api_test_class import api_test_class
 from devs.api_yfinance_stockprice import api_stockprice_yfinance 
 from devs_oz.MarketSenti_yf import calc_market_senti
+from devs_jihunshim.bs4_news_hankyung import bs4_scrapping
 
 def api_test_func():
     # api
@@ -68,8 +69,8 @@ def register_job_with_mongo(client, ip_add, db_name, col_name_work, col_name_des
             print("zero recode. skip schedule")
             return
         
-        # 60개씩 제한
-        BATCH_SIZE = 40
+        # 60개씩 제한 # 40 
+        BATCH_SIZE = 2
         symbols_batch = symbols.head(BATCH_SIZE)  # 처음 60개만 선택
         
         # symbol 컬럼만 리스트로 변환 => 추후 더 조치 필요 
@@ -87,7 +88,7 @@ def register_job_with_mongo(client, ip_add, db_name, col_name_work, col_name_des
             update_data = {
                 'ref_id': row['_id'],  # 원본 레코드의 ID를 참조 ID로 저장
                 'iswork': 'fin',
-                'symbol': row['symbol']
+                insert_data : row[insert_data]
             }
             update_data_list.append(update_data)
 
@@ -129,8 +130,9 @@ def run():
 
     '''
     func_list = [
-        {"func" : api_stockprice_yfinance.get_stockprice_yfinance, "args" : insert_data, "target" : f'COL_STOCKPRICE_HISTORY', "work" : f'COL_STOCKPRICE_WORK'},
-        {"func" : calc_market_senti.get_market_senti_list, "args" : insert_data, "target" : f'COL_MARKETSENTI_HISTORY', "work" : f'COL_MARKETSENTI_WORK'}
+        # {"func" : api_stockprice_yfinance.get_stockprice_yfinance, "args" : "symbol", "target" : f'COL_STOCKPRICE_HISTORY', "work" : f'COL_STOCKPRICE_WORK'},
+        # {"func" : calc_market_senti.get_market_senti_list, "args" : "symbol", "target" : f'COL_MARKETSENTI_HISTORY', "work" : f'COL_MARKETSENTI_WORK'},
+        {"func" : bs4_scrapping.bs4_news_hankyung, "args" : "url", "target" : f'COL_SCRAPPING_HANKYUNG_HISTORY', "work" : f'COL_SCRAPPING_HANKYUNG_WORK'}
         # {"func" : api_test_class.api_test_func,  "args" : []}
     ]
 
