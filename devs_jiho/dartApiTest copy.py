@@ -54,7 +54,10 @@ class DartFinancialService:
         
         if response.status_code == 200:
             company_info = json.loads(response.text)
-            return company_info.get('jurir_no')
+            # 법인구분이 'Y'인 경우에만 법인등록번호 반환
+            if company_info.get('corp_cls') == 'Y':
+                return company_info.get('jurir_no')
+        # API 호출 실패하거나 법인구분이 'Y'가 아닌 경우 None 반환
         return None
 
     def get_financial_statements(self, registration_number):
