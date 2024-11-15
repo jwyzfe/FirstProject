@@ -38,7 +38,8 @@ if __name__ == '__main__' :
     # 스케쥴러 등록 
     # ip_add = config['mongoDB']['ip']
     db_name = 'DB_SGMN'
-    col_name_work = 'COL_STOCKPRICE_WORK'
+    # col_name_work = 'COL_STOCKPRICE_WORK'
+    col_name_work = 'COL_MARKETSENTI_WORK'
     col_name_find = 'COL_AMERICA_CORPLIST'
 
     # col_america_corplist에서 symbol 데이터 읽어오기

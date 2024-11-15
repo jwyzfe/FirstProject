@@ -75,7 +75,7 @@ def register_job_with_mongo(client, ip_add, db_name, col_name, func, insert_data
         
     except Exception as e:
         logging.error(f'Error in job {func.__name__}: {str(e)}')
-        client.close()
+        # client.close()
 
 def main(message):
     config = read_config()

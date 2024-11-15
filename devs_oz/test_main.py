@@ -59,7 +59,7 @@ def register_job_with_mongo(client, ip_add, db_name, col_name, func, insert_data
         result_list = connect_mongo.insert_recode_in_mongo(client, db_name, col_name, result_data)       # print(f'insert id list count : {len(result_list.inserted_ids)}')
     except Exception as e :
         print(e)
-        client.close()
+        # client.close()
 
     return 
 

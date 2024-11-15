@@ -20,7 +20,7 @@ import pytz
 
 class api_stockprice_yfinance:
 
-    def api_test_func(symbol_list):
+    def get_stockprice_yfinance(symbol_list):
         return_histlist = pd.DataFrame()  # 빈 DataFrame 생성
         print(f"start:{datetime.now(pytz.timezone('Asia/Seoul'))}")
         for symbol in symbol_list:
@@ -62,7 +62,7 @@ def working_api_yfinance_stockpricing() :
 
     # symbol 컬럼만 리스트로 변환
     symbol_list = symbols['symbol'].tolist()
-    result_list = api_stockprice_yfinance.api_test_func(symbol_list=symbol_list)
+    result_list = api_stockprice_yfinance.get_stockprice_yfinance(symbol_list=symbol_list)
 
     # 히스토리 데이터 저장
     col_name = f'COL_STOCKPRICE_HISTORY'

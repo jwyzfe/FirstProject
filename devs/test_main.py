@@ -27,6 +27,7 @@ from commons.mongo_find_recode import connect_mongo as connect_mongo_find
 # 직접 구현한 부분을 import 해서 scheduler에 등록
 from devs.api_test_class import api_test_class
 from devs.api_yfinance_stockprice import api_stockprice_yfinance 
+from devs_oz.MarketSenti_yf import calc_market_senti
 
 def api_test_func():
     # api
@@ -58,6 +59,8 @@ def api_test_func():
 def register_job_with_mongo(client, ip_add, db_name, col_name_work, col_name_dest, func, insert_data):
 
     try:
+        if client is None:
+            client = MongoClient(ip_add)
         symbols = connect_mongo_find.get_unfinished_ready_records(client, db_name, col_name_work)
           
         # symbols가 비어있는지 확인
@@ -94,7 +97,7 @@ def register_job_with_mongo(client, ip_add, db_name, col_name_work, col_name_des
 
     except Exception as e:
         print(e)
-        client.close()
+        # client.close()
 
     return 
 
@@ -126,14 +129,17 @@ def run():
 
     '''
     func_list = [
-        {"func" : api_stockprice_yfinance.api_test_func, "args" : insert_data, "target" : col_name_dest, "work" : col_name_work}
+        {"func" : api_stockprice_yfinance.get_stockprice_yfinance, "args" : insert_data, "target" : f'COL_STOCKPRICE_HISTORY', "work" : f'COL_STOCKPRICE_WORK'},
+        {"func" : calc_market_senti.get_market_senti_list, "args" : insert_data, "target" : f'COL_MARKETSENTI_HISTORY', "work" : f'COL_MARKETSENTI_WORK'}
         # {"func" : api_test_class.api_test_func,  "args" : []}
     ]
+
+    #register_job_with_mongo(client, ip_add, db_name, func_list[0]['work'], func_list[0]['target'], func_list[0]['func'], func_list[0]['args'])
 
     for func in func_list:
         scheduler.add_job(register_job_with_mongo,                         
                         trigger='interval',
-                        seconds=50, # 5초 마다 반복 
+                        seconds=10, # 5초 마다 반복  50
                         coalesce=True, 
                         max_instances=1,
                         id=func['func'].__name__, # 독립적인 함수 이름 주어야 함.

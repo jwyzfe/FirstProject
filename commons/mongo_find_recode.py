@@ -52,7 +52,7 @@ class connect_mongo:
             records_cursor = collection.find()   # 모든 레코드 가져오기
         except Exception as e:
             print(f"Error reading records: {e}")
-            client.close()  # 클라이언트 연결 종료
+            # client.close()  # 클라이언트 연결 종료
 
         return records_cursor
         
@@ -73,7 +73,7 @@ class connect_mongo:
             
         except Exception as e:
             print(f"Error reading records: {e}")
-            client.close()  # 클라이언트 연결 종료
+            # client.close()  # 클라이언트 연결 종료
 
         return records_df
 
