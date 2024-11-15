@@ -28,7 +28,7 @@ class DartFinancialService:
         self.logger.info("DART API에서 기업 코드 데이터 요청 중...")
         
         DART_API_URL = "https://opendart.fss.or.kr/api/corpCode.xml"
-        DART_API_KEY = "19307cd5ad804dd73f156678b8b4cffa1d83122e"
+        DART_API_KEY = "272595a7ad7a5662bec294b003ebb9f3a942ca80"
         
         params = {'crtfc_key': DART_API_KEY}
         response = requests.get(DART_API_URL, params=params)
@@ -43,7 +43,7 @@ class DartFinancialService:
 
     def get_company_registration_number(self, corp_code):
         COMPANY_API_URL = "https://opendart.fss.or.kr/api/company.json"
-        DART_API_KEY = "19307cd5ad804dd73f156678b8b4cffa1d83122e"
+        DART_API_KEY = "272595a7ad7a5662bec294b003ebb9f3a942ca80"
         
         params = {
             'crtfc_key': DART_API_KEY,
