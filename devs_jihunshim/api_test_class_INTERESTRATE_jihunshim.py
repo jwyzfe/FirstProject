@@ -8,7 +8,7 @@ from commons.mongo_insert_recode import connect_mongo
 
 ip_add = f'mongodb://localhost:27017/'
 db_name = f'DB_SGMN' # db name 바꾸기
-col_name = f'COLLECTION_INTERESTRATE' # collection name 바꾸기
+col_name = f'COLLECTION_INTERESTRATE_HISTORICAL' # collection name 바꾸기
 
 class api_test_class:
     def api_test_func():
