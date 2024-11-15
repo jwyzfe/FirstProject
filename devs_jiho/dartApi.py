@@ -49,7 +49,7 @@ class CompanyFinancials:
         output_dir = 'financial_data'
         os.makedirs(output_dir, exist_ok=True)
         
-        for company_name, registration_number in self.dictCor[0].items():
+        for company_name, registration_number in ###수정필요 [0].items():
             if not registration_number:
                 self.logger.warning(f"회사명 {company_name}에 대한 법인번호가 없습니다.")
                 continue
