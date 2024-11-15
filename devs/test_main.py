@@ -59,13 +59,18 @@ def register_job_with_mongo(client, ip_add, db_name, col_name_work, col_name_des
 
     try:
         symbols = connect_mongo_find.get_unfinished_ready_records(client, db_name, col_name_work)
+          
+        # symbols가 비어있는지 확인
+        if symbols.empty:
+            print("zero recode. skip schedule")
+            return
         
         # 60개씩 제한
         BATCH_SIZE = 40
         symbols_batch = symbols.head(BATCH_SIZE)  # 처음 60개만 선택
         
-        # symbol 컬럼만 리스트로 변환
-        symbol_list = symbols_batch['symbol'].tolist()
+        # symbol 컬럼만 리스트로 변환 => 추후 더 조치 필요 
+        symbol_list = symbols_batch[insert_data].tolist()
 
         # 선택된 symbol 처리
         result_data = func(symbol_list)
@@ -111,10 +116,17 @@ def run():
 
     # 여기에 함수 등록 
     # 넘길 변수 없으면 # insert_data = []
-    insert_data = [url] # [val1,val2,val3]
+    insert_data = "symbol" # [val1,val2,val3]
     
+    '''
+    func : 수행할 일 함수
+    args : 그 일에 필요한 파라미터 => work 디비에 등록하면, 해당 컬럼만 리스트로 전달
+    target : 최종 저장할 데이터 베이스 컬렉션 이름 
+    work : 일 시킬 내용 들어있는 데이터 베이스 컬렉션 이름
+
+    '''
     func_list = [
-        {"func" : api_stockprice_yfinance.api_test_func, "args" : []}
+        {"func" : api_stockprice_yfinance.api_test_func, "args" : insert_data, "target" : col_name_dest, "work" : col_name_work}
         # {"func" : api_test_class.api_test_func,  "args" : []}
     ]
 
@@ -126,7 +138,7 @@ def run():
                         max_instances=1,
                         id=func['func'].__name__, # 독립적인 함수 이름 주어야 함.
                         # args=[args_list]
-                        args=[client, ip_add, db_name, col_name_work, col_name_dest, func['func'], func['args']] # 
+                        args=[client, ip_add, db_name, func['work'], func['target'], func['func'], func['args']] # 
                         )
     
     
