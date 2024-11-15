@@ -37,7 +37,7 @@ class bs4_scrapping:
 if __name__ == '__main__':
     page_list=['economy', 'financial-market', 'industry', 'politics', 'society', 'international']
     for url_page in page_list :
-        for page_num in range(7,10):
+        for page_num in range(1,500):
             url = f'https://www.hankyung.com/{url_page}?page={page_num}'     
             bs4_scrapping.do_scrapping(url)
     pass
