@@ -1,5 +1,6 @@
 *.png
 *.json
+*.csv
 *.txt
 *.htm
 downloads/

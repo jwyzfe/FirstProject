@@ -29,6 +29,7 @@ from devs.api_test_class import api_test_class
 from devs.api_yfinance_stockprice import api_stockprice_yfinance 
 from devs_oz.MarketSenti_yf import calc_market_senti
 from devs_jihunshim.bs4_news_hankyung import bs4_scrapping
+from devs_jiho.dartApi import CompanyFinancials
 
 def api_test_func():
     # api
@@ -70,7 +71,7 @@ def register_job_with_mongo(client, ip_add, db_name, col_name_work, col_name_des
             return
         
         # 60개씩 제한 # 40 
-        BATCH_SIZE = 2
+        BATCH_SIZE = 15
         symbols_batch = symbols.head(BATCH_SIZE)  # 처음 60개만 선택
         
         # symbol 컬럼만 리스트로 변환 => 추후 더 조치 필요 
@@ -106,7 +107,7 @@ def run():
 
     # 스케쥴러 등록 
     # mongodb 가져올 수 있도록
-    ip_add = f'mongodb://192.168.0.91:27017/'
+    ip_add = f'mongodb://192.168.0.48:27017/'
     db_name = f'DB_SGMN' # db name 바꾸기
     col_name_work = f'COL_STOCKPRICE_WORK' # collection name 바꾸기
     col_name_dest = f'COL_STOCKPRICE_HISTORY' # collection name 바꾸기
@@ -130,18 +131,19 @@ def run():
 
     '''
     func_list = [
-        # {"func" : api_stockprice_yfinance.get_stockprice_yfinance, "args" : "symbol", "target" : f'COL_STOCKPRICE_HISTORY', "work" : f'COL_STOCKPRICE_WORK'},
-        # {"func" : calc_market_senti.get_market_senti_list, "args" : "symbol", "target" : f'COL_MARKETSENTI_HISTORY', "work" : f'COL_MARKETSENTI_WORK'},
-        {"func" : bs4_scrapping.bs4_news_hankyung, "args" : "url", "target" : f'COL_SCRAPPING_HANKYUNG_HISTORY', "work" : f'COL_SCRAPPING_HANKYUNG_WORK'}
+        {"func" : api_stockprice_yfinance.get_stockprice_yfinance, "args" : "symbol", "target" : f'COL_STOCKPRICE_HISTORY', "work" : f'COL_STOCKPRICE_WORK'},
+        {"func" : calc_market_senti.get_market_senti_list, "args" : "symbol", "target" : f'COL_MARKETSENTI_HISTORY', "work" : f'COL_MARKETSENTI_WORK'},
+        {"func" : bs4_scrapping.bs4_news_hankyung, "args" : "url", "target" : f'COL_SCRAPPING_HANKYUNG_HISTORY', "work" : f'COL_SCRAPPING_HANKYUNG_WORK'},
+        {"func" : CompanyFinancials.get_financial_statements, "args" : "corp_regist_num", "target" : f'COL_FINANCIAL_HISTORY', "work" : f'COL_FINANCIAL_WORK'}
         # {"func" : api_test_class.api_test_func,  "args" : []}
     ]
 
-    #register_job_with_mongo(client, ip_add, db_name, func_list[0]['work'], func_list[0]['target'], func_list[0]['func'], func_list[0]['args'])
+    # register_job_with_mongo(client, ip_add, db_name, func_list[0]['work'], func_list[0]['target'], func_list[0]['func'], func_list[0]['args'])
 
     for func in func_list:
         scheduler.add_job(register_job_with_mongo,                         
                         trigger='interval',
-                        seconds=10, # 5초 마다 반복  50
+                        seconds=50, # 5초 마다 반복  50
                         coalesce=True, 
                         max_instances=1,
                         id=func['func'].__name__, # 독립적인 함수 이름 주어야 함.

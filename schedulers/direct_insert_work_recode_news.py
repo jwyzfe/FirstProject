@@ -34,7 +34,7 @@ if __name__ == '__main__' :
 
 
     config = read_config()
-    ip_add = f'mongodb://192.168.0.91:27017/'
+    ip_add = f'mongodb://192.168.0.48:27017/'
     # MongoDB 연결 설정 
     # mongo_client = MongoClient(config['mongoDB']['ip'])
     mongo_client = MongoClient(ip_add)
