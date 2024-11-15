@@ -20,7 +20,7 @@ def make_direct_insert_work_recode(symbols_df) :
         for _, row in symbols_df.iterrows():
             work_record = {
                 'symbol': row['symbol'],  # symbol 컬럼의 값
-                'iswork': 'ready'
+                'iswork': 'ready' #symbol을 ready라고 세팅후 work symbol이랑 ready뜨면 work  //symbol 끝나면 insert 세팅 플래그 final로 바꾸고 
             }
             work_records.append(work_record)
     
