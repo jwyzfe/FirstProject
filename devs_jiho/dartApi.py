@@ -23,8 +23,8 @@ class CompanyFinancials:
                     'serviceKey': FINANCIAL_API_KEY,
                     'crno': registration_number,
                     'resultType': 'json',
-                    'pageNo': '100',
-                    'numOfRows': '100'
+                    'pageNo': '1',
+                    'numOfRows': '1'
                 }
                 
                 response = requests.get(FINANCIAL_API_URL, params=params)
