@@ -1359,9 +1359,27 @@ stock_code = [
 
 ]
 
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.chrome.options import Options
+
+chrome_options = Options()
+chrome_options.add_argument("--headless")  # GUI 없이 실행
+chrome_options.add_argument("--no-sandbox")  # 샌드박스 비활성화
+chrome_options.add_argument("--disable-dev-shm-usage")  # /dev/shm 사용 비활성화
+
+# ChromeDriver 경로 설정
+service = ChromeService('/usr/bin/chromedriver')  # ChromeDriver 경로
+
+# ChromeDriver 실행
+browser = webdriver.Chrome(service=service, options=chrome_options)
+
 
 def get_toss_comments(stock_code):
-    driver = webdriver.Chrome()
+    
+    # ChromeDriver 실행
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+    # driver = webdriver.Chrome()
     comments_by_date = {}  # 날짜별 댓글을 저장할 딕셔너리
     
     try:
