@@ -36,7 +36,7 @@ class api_stockprice_yfinance:
                 # DataFrame을 레코드 리스트로 변환 후 머지
                 return_histlist = pd.concat([return_histlist, df_with_date])
             print(f"loop:{datetime.now(pytz.timezone('Asia/Seoul'))}")
-        # print(hist)
+        print(hist)
 
         return return_histlist
     
@@ -89,7 +89,9 @@ def working_api_yfinance_stockpricing() :
 
 if __name__ == '__main__':
 
+    corp_list = ['010950.ks']
+    api_stockprice_yfinance.get_stockprice_yfinance(corp_list)
 
-    working_api_yfinance_stockpricing()
+    # working_api_yfinance_stockpricing()
 
     pass
