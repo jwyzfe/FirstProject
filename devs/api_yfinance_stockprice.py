@@ -36,7 +36,7 @@ class api_stockprice_yfinance:
                 # DataFrame을 레코드 리스트로 변환 후 머지
                 return_histlist = pd.concat([return_histlist, df_with_date])
             print(f"loop:{datetime.now(pytz.timezone('Asia/Seoul'))}")
-        print(hist)
+        # print(hist)
 
         return return_histlist
     
