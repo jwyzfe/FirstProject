@@ -1,15 +1,25 @@
 import time
 import requests
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 
 def yahoo_scrapping():
     # ChromeDriver 설정
-    options = webdriver.ChromeOptions()
-    options.add_argument('--headless')  # 브라우저 창을 띄우지 않음 (백그라운드 실행)
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    # options = webdriver.ChromeOptions()
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")  # GUI 없이 실행
+    chrome_options.add_argument("--no-sandbox")  # 샌드박스 비활성화
+    chrome_options.add_argument("--disable-dev-shm-usage")  # /dev/shm 사용 비활성화
+    
+    # ChromeDriver 경로 설정
+    service = ChromeService('/usr/bin/chromedriver')  # ChromeDriver 경로
+
+    # ChromeDriver 실행
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+    # driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
 
     # Yahoo Finance 페이지 열기
     driver.get('https://finance.yahoo.com/topic/stock-market-news/')
