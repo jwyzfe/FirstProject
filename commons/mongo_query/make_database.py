@@ -5,7 +5,7 @@ from pymongo import MongoClient
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from commons.mongo_insert_recode import connect_mongo
+from mongo_insert_recode import connect_mongo
 
 
 if __name__ == "__main__":
@@ -61,7 +61,7 @@ if __name__ == "__main__":
 
     # 스케쥴러 등록 
     # mongodb 가져올 수 있도록
-    ip_add = f'mongodb://192.168.0.91:27017/'
+    ip_add = f'mongodb://192.168.0.50:27017/'
     db_name = f'DB_SGMN'
     col_name = f'COL_AMERICA_CORPLIST' # collection name 바꾸기
 

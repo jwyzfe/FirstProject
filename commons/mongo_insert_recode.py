@@ -31,3 +31,24 @@ class connect_mongo:
             return None
 
         return results
+    
+    def insert_recode_in_mongo_notime(client, dbname, collectionname, input_list):
+
+        # 'mydatabase' 데이터베이스 선택 (없으면 자동 생성)
+        db = client[dbname]
+        # 'users' 컬렉션 선택 (없으면 자동 생성)
+        collection = db[collectionname]
+
+        # 데이터 입력
+        if isinstance(input_list, pd.DataFrame):
+            records = input_list.to_dict(orient='records')
+            results = collection.insert_many(records)
+        elif isinstance(input_list, list):
+            results = collection.insert_many(input_list)
+        elif isinstance(input_list, dict):
+            results = collection.insert_one(input_list)
+        else:
+            print("insert_recode_in_mongo: type error")
+            return None
+
+        return results
