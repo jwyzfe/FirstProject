@@ -24,6 +24,7 @@ from commons.api_send_requester import ApiRequester
 from commons.templates.sel_iframe_courtauction import iframe_test
 from commons.templates.bs4_do_scrapping import bs4_scrapping
 from commons.mongo_find_recode import connect_mongo as connect_mongo_find
+from commons.mongo_query.direct_insert_dbtodb_batch import transfer_collection
 
 # 직접 구현한 부분을 import 해서 scheduler에 등록
 from devs.api_test_class import api_test_class
@@ -158,6 +159,23 @@ def register_job_with_mongo_cron(client, ip_add, db_name, col_name_work, col_nam
 
     return
 
+def scheduled_transfer():
+    # 사용 예시
+    source_host = '192.168.0.48'  # A 컴퓨터의 IP 주소
+    source_port = 27017             # A 컴퓨터의 MongoDB 포트
+    source_db = 'DB_SGMN'              # A 컴퓨터의 데이터베이스 이름
+    source_collection = 'COL_STOCKPRICE_HISTORY'  # A 컴퓨터의 컬렉션 이름
+
+    dest_host = '192.168.0.50'     # B 컴퓨터의 IP 주소
+    dest_port = 27017               # B 컴퓨터의 MongoDB 포트
+    dest_db = 'DB_SGMN'                # B 컴퓨터의 데이터베이스 이름
+    dest_collection = 'COL_STOCKPRICE_HISTORY'  # B 컴퓨터의 컬렉션 이름
+
+    # 컬렉션 전송
+    transfer_collection(source_host, source_port, source_db, source_collection,
+                        dest_host, dest_port, dest_db, dest_collection)
+
+
 def run():
 
     config = read_config()
@@ -195,6 +213,9 @@ def run():
     ]
 
     # register_job_with_mongo(client, ip_add, db_name, func_list[0]['work'], func_list[0]['target'], func_list[0]['func'], func_list[0]['args'])
+    scheduler.add_job(scheduled_transfer, 'interval', seconds=15)  # 10분마다 실행
+
+
 
     for func in func_list:
         # scheduler.add_job(register_job_with_mongo,                         
