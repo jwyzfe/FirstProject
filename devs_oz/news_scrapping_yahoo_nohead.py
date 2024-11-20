@@ -5,21 +5,27 @@ from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 import requests
 import pandas as pd
+from pymongo import MongoClient
 
 class NewsArticle:
-    def __init__(self, title, url, content):
+    def __init__(self, title, news_url, contents):
         self.title = title
-        self.url = url
-        self.content = content
+        self.news_url = news_url
+        self.contents = contents
 
     def to_dict(self):
         return {
             'title': self.title,
-            'url': self.url,
-            'content': self.content,
+            'news_url': self.news_url,
+            'contents': self.contents,
         }
 
 def scrape_news():
+    # MongoDB 연결 설정
+    client = MongoClient('mongodb://192.168.0.48:27017/')
+    db = client['DB_SGMN']  # DB 이름
+    collection = db['COL_SCRAPPING_YAHOO_WORK']  # 워크 컬렉션 이름
+
     # ChromeDriver 설정
     options = webdriver.ChromeOptions()
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
@@ -31,15 +37,6 @@ def scrape_news():
     headline_news = []  # 일반 기사 저장
     h2_news = []  # h2 섹션 기사 저장
     scroll_count = 0  # 스크롤 횟수
-
-    # 초기 데이터프레임 설정
-    combined_df = pd.DataFrame(columns=['title', 'url', 'content'])  # 빈 데이터프레임 생성
-
-    print("기사 스크랩 시작 (밑에서 위 방향으로)...")
-
-    # 스크롤 최하단으로 이동
-    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-    time.sleep(2)
 
     # 1단계: 일반 기사 스크랩 (밑에서 위 방향으로, 스크롤 최대 10번)
     while scroll_count < 10:
@@ -61,21 +58,22 @@ def scrape_news():
                     content = soup_content.select_one('div.body-wrap.yf-i23rhs')
                     content_text = content.text.strip() if content else ''
 
+                    # 뉴스 항목 생성
                     news_item = NewsArticle(title, link, content_text)
                     headline_news.append(news_item.to_dict())
 
-                    # 실시간 데이터프레임 갱신
-                    headline_df = pd.DataFrame([news_item.to_dict()])
-                    combined_df = pd.concat([combined_df, headline_df], ignore_index=True)
+                    # MongoDB에 데이터 삽입
+                    collection.insert_one(news_item.to_dict())
 
                     # 새 기사 출력
                     print(f"Title: {news_item.title}")
-                    print(f"URL: {news_item.url}")
-                    print(f"Content: {news_item.content}...")
+                    print(f"URL: {news_item.news_url}")
+                    print(f"Content: {news_item.contents}")  # Content의 앞 200자만 출력
                     print(f"--" * 10)
 
                 except Exception as e:
                     print(f"Headline 기사 스크랩 중 오류 발생: {e} | Title: {title} | Link: {link}")
+                    return None  # 예외 발생 시 함수 종료 및 None 반환
 
         # 위로 스크롤
         driver.execute_script("window.scrollBy(0, -window.innerHeight);")
@@ -103,25 +101,28 @@ def scrape_news():
                     content = soup_content.select_one('div.body-wrap.yf-i23rhs')
                     content_text = content.text.strip() if content else ''
 
+                    # 뉴스 항목 생성
                     news_item = NewsArticle(title, link, content_text)
                     h2_news.append(news_item.to_dict())
 
-                    # 실시간 데이터프레임 갱신
-                    h2_df = pd.DataFrame([news_item.to_dict()])
-                    combined_df = pd.concat([combined_df, h2_df], ignore_index=True)
+                    # MongoDB에 데이터 삽입
+                    collection.insert_one(news_item.to_dict())
 
                     # 새 h2 기사 출력
                     print(f"Title: {news_item.title}")
-                    print(f"URL: {news_item.url}")
-                    print(f"Content: {news_item.content}...")
+                    print(f"URL: {news_item.news_url}")
+                    print(f"Content: {news_item.contents}")  # Content의 앞 200자만 출력
                     print(f"--" * 10)
 
                 except Exception as e:
                     print(f"h2 기사 스크랩 중 오류 발생: {e} | Title: {title} | Link: {link}")
+                    return None  # 예외 발생 시 함수 종료 및 None 반환
 
         time.sleep(5)  # h2 섹션 업데이트 대기
 
-    
+    driver.quit()
+    return "스크래핑 완료"
 
 if __name__ == "__main__":
-    scrape_news()
+    result = scrape_news()
+    print(result)
