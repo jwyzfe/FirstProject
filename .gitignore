@@ -3,6 +3,7 @@
 *.csv
 *.txt
 *.htm
+*.csv
 downloads/
 __pycache__/
 config.ini

@@ -3,11 +3,10 @@ from datetime import datetime
 import pytz
 
 class connect_mongo:
-    def insert_recode_in_mongo(client, dbname, collectionname, input_list):
 
-        # 'mydatabase' 데이터베이스 선택 (없으면 자동 생성)
-        db = client[dbname]
-        # 'users' 컬렉션 선택 (없으면 자동 생성)
+    def insert_recode_in_mongo(client, dbname, collectionname, input_list):
+        # 데이터베이스 선택
+        db = client[dbname]  
         collection = db[collectionname]
 
         # 현재 시간 기록
@@ -29,6 +28,7 @@ class connect_mongo:
         else:
             print("insert_recode_in_mongo: type error")
             return None
+        
 
         return results
     
