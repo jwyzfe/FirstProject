@@ -3,9 +3,9 @@ import pandas as pd
 # datetime
 from datetime import datetime 
 import pytz
-class calc_market_senti:
 
-    # get_market_senti 함수 정의
+class calc_market_senti:
+# get_market_senti 함수 정의
     @classmethod
     def get_market_senti(cls, symbol):
         try:
@@ -88,7 +88,7 @@ class calc_market_senti:
         # print("\nMACD (최근 1년 월간 데이터):")
         # print("MACD Line:")
         # print(macd_line.dropna())
-        # print("Signal Line:")
+        # print("Signal Line:")  
         # print(signal_line.dropna())
         # print("MACD Histogram:")
         # print(macd_histogram.dropna())
