@@ -16,6 +16,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from commons.api_send_requester import ApiRequester
 from commons.mongo_find_recode import connect_mongo as connect_mongo_find
 from commons.mongo_insert_recode import connect_mongo as connect_mongo_insert
+from commons.config_reader import read_config # config read 용    
 
 
 '''
@@ -111,10 +112,11 @@ class api_stockprice_yfinance:
 
 if __name__ == "__main__":
 
+    config = read_config()
     # 스케쥴러 등록 
     # mongodb 가져올 수 있도록
-    ip_add = f'mongodb://192.168.0.91:27017/'
-    db_name = f'DB_SGMN'
+    ip_add = config['MongoDB_local_shlee']['ip_add']
+    db_name = config['MongoDB_local_shlee']['db_name']
     col_name = f'COL_SYMBOL_RECORD' # 데이터 읽을 collection
 
     # MongoDB 서버에 연결 
