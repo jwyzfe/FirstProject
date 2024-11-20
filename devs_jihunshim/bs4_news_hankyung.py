@@ -1,7 +1,13 @@
-
 import requests
 from bs4 import BeautifulSoup
 import time
+
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from pymongo import MongoClient
+from commons.mongo_find_recode import connect_mongo
+import pandas as pd
 
 class bs4_scrapping:
 
@@ -56,13 +62,18 @@ class bs4_scrapping:
         
         # 결과 요약 출력
         # print(f"\nTotal articles collected: {len(all_results)}")
-        
-        return all_results
+        df_data = pd.DataFrame(list(all_results))
+        df_users_source = df_data.drop_duplicates(subset = ['link'])
+        return df_users_source
     
 if __name__ == '__main__':
     page_list=['economy', 'financial-market', 'industry', 'politics', 'society', 'international']
+    
+    url_list = [] 
     for url_page in page_list :
-        for page_num in range(1,2):
-            url = f'https://www.hankyung.com/{url_page}?page={page_num}'     
-            bs4_scrapping.bs4_news_hankyung(url)
+        for page_num in range(1,11):
+            url = f'https://www.hankyung.com/{url_page}?page={page_num}'   
+            url_list.append(url)
+    url_scrapping = bs4_scrapping.bs4_news_hankyung(url_list)
+    
     pass
