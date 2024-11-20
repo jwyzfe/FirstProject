@@ -72,7 +72,7 @@ def register_job_with_mongo(client, ip_add, db_name, col_name_work, col_name_des
             return
         
         # 60개씩 제한 # 40 
-        BATCH_SIZE = 15
+        BATCH_SIZE = 20
         symbols_batch = symbols.head(BATCH_SIZE)  # 처음 60개만 선택
         
         # symbol 컬럼만 리스트로 변환 => 추후 더 조치 필요 
@@ -142,15 +142,24 @@ def run():
     # register_job_with_mongo(client, ip_add, db_name, func_list[0]['work'], func_list[0]['target'], func_list[0]['func'], func_list[0]['args'])
 
     for func in func_list:
+        # scheduler.add_job(register_job_with_mongo,                         
+        #                 trigger='interval',
+        #                 seconds=15, # 5초 마다 반복  50
+        #                 coalesce=True, 
+        #                 max_instances=1,
+        #                 id=func['func'].__name__, # 독립적인 함수 이름 주어야 함.
+        #                 # args=[args_list]
+        #                 args=[client, ip_add, db_name, func['work'], func['target'], func['func'], func['args']] # 
+        #                 )
         scheduler.add_job(register_job_with_mongo,                         
-                        trigger='interval',
-                        seconds=15, # 5초 마다 반복  50
-                        coalesce=True, 
-                        max_instances=1,
-                        id=func['func'].__name__, # 독립적인 함수 이름 주어야 함.
-                        # args=[args_list]
-                        args=[client, ip_add, db_name, func['work'], func['target'], func['func'], func['args']] # 
-                        )
+                    trigger='cron',  # 크론 트리거 사용
+                    minute='*',      # 매 분마다 실행
+                    second='0',      # 매 분의 0초에 실행
+                    coalesce=True, 
+                    max_instances=1,
+                    id=func['func'].__name__,  # 독립적인 함수 이름 주어야 함.
+                    args=[client, ip_add, db_name, func['work'], func['target'], func['func'], func['args']]
+                    )
     
     
     scheduler.start()

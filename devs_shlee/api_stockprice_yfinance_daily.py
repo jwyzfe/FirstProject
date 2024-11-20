@@ -176,66 +176,9 @@ class api_stockprice_yfinance:
 
         return df_combined
         
-    
-
-def working_api_yfinance_stockpricing() :
-
-    config = read_config()
-    ip_add = config['MongoDB_local_shlee']['ip_add']
-    db_name = config['MongoDB_local_shlee']['db_name']
-    col_name = f'COL_STOCKPRICE_WORK' # 데이터 읽을 collection
-
-    # MongoDB 서버에 연결 
-    client = MongoClient(ip_add)
-    '''
-    apple_records = connect_mongo_find.get_records_dataframe(client, db_name, col_name, {"symbol": "AAPL"})
-    specific_records = connect_mongo_find.get_records_dataframe(client, db_name, col_name, {"symbol": "AAPL", "iswork": "fin"})
-    '''
-    # symbols = connect_mongo_find.get_unfinished_ready_records(client, db_name, col_name)
-    symbols = connect_mongo_find.get_records_dataframe(client, db_name, col_name)
-
-    # symbol 컬럼만 리스트로 변환
-    symbol_list = symbols['symbol'].tolist()
-    result_list = api_stockprice_yfinance.get_stockprice_yfinance_history(symbol_list=symbol_list)
-
-    # 히스토리 데이터 저장
-    col_name = f'COL_STOCKPRICE_HISTORY'
-    connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name, result_list)
-
-    # 작업 상태 업데이트
-    col_name = f'COL_STOCKPRICE_WORK'
-    update_data_list = []
-    for index, row in symbols.iterrows():
-        update_data = {
-            'ref_id': row['_id'],  # 원본 레코드의 ID를 참조 ID로 저장
-            'iswork': 'fin',
-            'symbol': row['symbol']
-        }
-        update_data_list.append(update_data)
-    
-    # 새로운 레코드로 삽입
-    connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name, pd.DataFrame(update_data_list))
-
-    pass
-
 
 def small_test_yfinance_func():
-    '''
-    고려사항
-    1. 파라미터 - start time datetime.now-2d or select date , end time=datetime.now or datetime.now+1d , symbol, interval
-    2. 시간 - download vs hist download 압도적 빠름
-    3. 개별 로직 - 그냥 퍼와서 넣기 말고 또 있나? - 
-    
-    
-    4. 저장 - 기존 hist에 바로? 아니면 temp db 둠? 중복 처리 어떻게? # 25000000 record 옮기는데 약 7시간 소요 이거 기억해야해
-    5. 토탈 로직 - working 등록 어떻게? cron 이랑 interval 나누는게 프로세싱 이득 이긴할 듯. inter랑 cron 또는 cron 끼리 겹칠 때는 어떻? 못돌면 어떻? 
-        1. 주기적으로 밥 넣어 주기? work에? 
-        2. 아니면 work를 분리 하거나 컬럼을 추가 해야 하나? 날짜 컬럼을? 
-        동일 work 쓸거면 분리하긴 해야 할 듯?
-        !!일단 귀찮으니까 따로 만들어 쓰고 그다음 합치던가 하자 
-        개별 func 에서 datetime 쓰는거는 위험하다 시간이 다다를수 있어 통일된 시간 값을 쓰게 수정해야 해. => 공통으로 빼서 무조건 이거 쓰게 해야 했는데 ㄷㄷ
 
-    '''
     # symbols = ["NVDA", "AAPL", "MSFT", "AMZN", "META", "GOOGL", "TSLA", "GOOG", "BRK.B", "AVGO"]
     # 심볼 리스트 (유효하지 않은 심볼 포함)
     symbols = ['AAPL', 'MSFT', 'INVALID_SYMBOL', 'GOOGL']
@@ -309,7 +252,6 @@ def test_yfinance_func():
     
     # 새로운 레코드로 삽입
     connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name, pd.DataFrame(update_data_list))
-
 
     pass
 
