@@ -131,7 +131,7 @@ def run():
 
     '''
     func_list = [
-        {"func" : api_stockprice_yfinance.get_stockprice_yfinance, "args" : "symbol", "target" : f'COL_STOCKPRICE_HISTORY', "work" : f'COL_STOCKPRICE_WORK'},
+        {"func" : api_stockprice_yfinance.get_stockprice_yfinance_history, "args" : "symbol", "target" : f'COL_STOCKPRICE_HISTORY', "work" : f'COL_STOCKPRICE_WORK'},
         {"func" : calc_market_senti.get_market_senti_list, "args" : "symbol", "target" : f'COL_MARKETSENTI_HISTORY', "work" : f'COL_MARKETSENTI_WORK'},
         {"func" : bs4_scrapping.bs4_news_hankyung, "args" : "url", "target" : f'COL_SCRAPPING_HANKYUNG_HISTORY', "work" : f'COL_SCRAPPING_HANKYUNG_WORK'},
         {"func" : CompanyFinancials.get_financial_statements, "args" : "corp_regist_num", "target" : f'COL_FINANCIAL_HISTORY', "work" : f'COL_FINANCIAL_WORK'}

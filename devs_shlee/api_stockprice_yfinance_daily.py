@@ -1,4 +1,12 @@
+# main에서 다른 폴더 경로 참조하려면 필요
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# 직접 만든 class    
+from commons.config_reader import read_config # config read 용       
+from commons.mongo_insert_recode import connect_mongo as connect_mongo_insert
+from commons.mongo_find_recode import connect_mongo as connect_mongo_find
 
 # mongo DB 동작
 from pymongo import MongoClient
@@ -7,92 +15,15 @@ import yfinance as yf
 # padas
 import pandas as pd
 # datetime
-from datetime import datetime 
+from datetime import datetime, timedelta 
+import time
+import pytz
 
-# 직접 만든 class 
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from commons.api_send_requester import ApiRequester
-from commons.mongo_find_recode import connect_mongo as connect_mongo_find
-from commons.mongo_insert_recode import connect_mongo as connect_mongo_insert
-from commons.config_reader import read_config # config read 용    
-
-
-'''
-        # show meta information about the history (requires history() to be called first)
-        msft.history_metadata
-
-        # show actions (dividends, splits, capital gains)
-        msft.actions
-        msft.dividends
-        msft.splits
-        msft.capital_gains  # only for mutual funds & etfs
-
-        # show share count
-        msft.get_shares_full(start="2022-01-01", end=None)
-
-        # show financials:
-        msft.calendar
-        msft.sec_filings
-        # - income statement
-        msft.income_stmt
-        msft.quarterly_income_stmt
-        # - balance sheet
-        msft.balance_sheet
-        msft.quarterly_balance_sheet
-        # - cash flow statement
-        msft.cashflow
-        msft.quarterly_cashflow
-        # see `Ticker.get_income_stmt()` for more options
-
-        # show holders
-        msft.major_holders
-        msft.institutional_holders
-        msft.mutualfund_holders
-        msft.insider_transactions
-        msft.insider_purchases
-        msft.insider_roster_holders
-
-        msft.sustainability
-
-        # show recommendations
-        msft.recommendations
-        msft.recommendations_summary
-        msft.upgrades_downgrades
-
-        # show analysts data
-        msft.analyst_price_targets
-        msft.earnings_estimate
-        msft.revenue_estimate
-        msft.earnings_history
-        msft.eps_trend
-        msft.eps_revisions
-        msft.growth_estimates
-
-        # Show future and historic earnings dates, returns at most next 4 quarters and last 8 quarters by default.
-        # Note: If more are needed use msft.get_earnings_dates(limit=XX) with increased limit argument.
-        msft.earnings_dates
-
-        # show ISIN code - *experimental*
-        # ISIN = International Securities Identification Number
-        msft.isin
-
-        # show options expirations
-        msft.options
-
-        # show news
-        msft.news
-
-        # get option chain for specific expiration
-        opt = msft.option_chain('YYYY-MM-DD')
-        # data available via: opt.calls, opt.puts
-
-'''
 class api_stockprice_yfinance:
-    def api_test_func(symbol_list):
+
+    def get_stockprice_yfinance_history(symbol_list):
         return_histlist = pd.DataFrame()  # 빈 DataFrame 생성
-        print(f"start:{datetime.now()}")
+        print(f"start:{datetime.now(pytz.timezone('Asia/Seoul'))}")
         for symbol in symbol_list:
             msft = yf.Ticker(symbol) # "MSFT"
             # get all stock info
@@ -105,29 +36,282 @@ class api_stockprice_yfinance:
                 df_with_date = hist.reset_index()
                 # DataFrame을 레코드 리스트로 변환 후 머지
                 return_histlist = pd.concat([return_histlist, df_with_date])
-            print(f"loop:{datetime.now()}")
+            print(f"loop:{datetime.now(pytz.timezone('Asia/Seoul'))}")
         # print(hist)
 
         return return_histlist
+    
+    def get_stockprice_yfinance_period_hist(symbol_list, start_time=None, end_time=None, interval=None ):
+        return_histlist = pd.DataFrame()  # 빈 DataFrame 생성
+        #print(f"start:{datetime.now(pytz.timezone('Asia/Seoul'))}")
+        for symbol in symbol_list:
+            try:
+                ticker = yf.Ticker(symbol) # "MSFT"
+                # get all stock info
+                # ticker.info
+                # get historical market data
+                hist = ticker.history(
+                        interval=interval,  # 1분 간격
+                        start=start_time,
+                        end=end_time
+                )
+                if hist is not None and not hist.empty:  # hist가 None이 아니고 비어있지 않은 경우
+                    hist['symbol'] = symbol  # 'symbol' 컬럼 추가
+                    # 인덱스를 'Date' 컬럼으로 변환
+                    df_with_date = hist.reset_index()
+                    # DataFrame을 레코드 리스트로 변환 후 머지
+                    return_histlist = pd.concat([return_histlist, df_with_date])
+                #print(f"loop:{datetime.now(pytz.timezone('Asia/Seoul'))}")
+                # print(hist)
+            except Exception as e :
+                print(f"Error processing symbol {symbol}: {e}")
+                continue
 
-if __name__ == "__main__":
+        return return_histlist
+    
+    '''
+    def download(tickers, start=None, end=None, actions=False, threads=True,
+        ignore_tz=None, group_by='column', auto_adjust=False, back_adjust=False,
+        repair=False, keepna=False, progress=True, period="max", interval="1d",
+        prepost=False, proxy=None, rounding=False, timeout=10, session=None,
+        multi_level_index=True):
+        
+    '''
+    def get_stockprice_yfinance_period_down(symbol_list, start_time=None, end_time=None, interval=None):
+        try:
+            # 데이터 다운로드
+            data = yf.download(
+                symbol_list,
+                start=start_time,
+                end=end_time,
+                interval=interval,
+                actions=True,  # 배당금 및 주식 분할 데이터 포함
+                group_by='ticker'  # 티커별로 그룹화
+            )
+
+            # 데이터가 비어있지 않은 경우
+            if not data.empty:
+                result_df = pd.DataFrame()  # 최종 결과를 저장할 DataFrame
+
+                # 단일 심볼인 경우
+                if isinstance(data.columns, pd.Index):
+                    df_formatted = pd.DataFrame({
+                        'date': data.index,
+                        'open': data['Open'],
+                        'high': data['High'],
+                        'low': data['Low'],
+                        'close': data['Close'],
+                        'volume': data['Volume'],
+                        'dividends': data['Dividends'].sum(),  # 배당금 합계
+                        'stocksplits': data['Stock Splits'].sum(),  # 주식 분할 합계
+                        'symbol': symbol_list[0] if isinstance(symbol_list, list) else symbol_list
+                    })
+                    result_df = pd.concat([result_df, df_formatted])
+
+                # 여러 심볼인 경우
+                else:
+                    for symbol in symbol_list:
+                        if symbol in data.columns.levels[1]:  # 해당 심볼의 데이터가 있는 경우
+                            df_formatted = pd.DataFrame({
+                                'date': data.index,
+                                'open': data[symbol]['Open'],
+                                'high': data[symbol]['High'],
+                                'low': data[symbol]['Low'],
+                                'close': data[symbol]['Close'],
+                                'volume': data[symbol]['Volume'],
+                                'dividends': data[symbol]['Dividends'].sum(),  # 배당금 합계
+                                'stocksplits': data[symbol]['Stock Splits'].sum(),  # 주식 분할 합계
+                                'symbol': symbol
+                            })
+                            result_df = pd.concat([result_df, df_formatted])
+
+                return result_df.reset_index(drop=True)
+            else:
+                print("No data found for the given symbols and time period.")
+                return pd.DataFrame()
+
+        except Exception as e:
+            print(f"Error downloading data: {e}")
+            return pd.DataFrame()
+            
+
+    def get_stockprice_yfinance_daily(symbol_list):
+        # 예외처리 !!
+        # 현재 시간에서 2일 전과 1일 후로 설정 # 파라미터로 받아야? 
+        start_time = datetime.now() - timedelta(days=2)  # 2일 전
+        end_time = datetime.now() + timedelta(days=1)    # 1일 후
+        interval = '1d'  # 1일 간격
+
+        # 결과를 저장할 DataFrame 초기화
+        df_combined = pd.DataFrame()
+
+        # 심볼 리스트가 8개 이상일 경우 5개씩 슬라이스하여 처리
+        if len(symbol_list) >= 8:
+            for i in range(0, len(symbol_list), 5):
+                sliced_symbols = symbol_list[i:i + 5]  # 5개씩 슬라이스
+                df_download = api_stockprice_yfinance.get_stockprice_yfinance_period_down(
+                    sliced_symbols,
+                    start_time=start_time,
+                    end_time=end_time,
+                    interval=interval
+                )
+                df_combined = pd.concat([df_combined, df_download], ignore_index=True)  # 결과 병합
+        else:
+            # 심볼 리스트가 8개 미만일 경우 전체 리스트로 처리
+            df_combined = api_stockprice_yfinance.get_stockprice_yfinance_period_down(
+                symbol_list,
+                start_time=start_time,
+                end_time=end_time,
+                interval=interval
+            )
+
+        return df_combined
+        
+    
+
+def working_api_yfinance_stockpricing() :
 
     config = read_config()
-    # 스케쥴러 등록 
-    # mongodb 가져올 수 있도록
     ip_add = config['MongoDB_local_shlee']['ip_add']
     db_name = config['MongoDB_local_shlee']['db_name']
-    col_name = f'COL_SYMBOL_RECORD' # 데이터 읽을 collection
+    col_name = f'COL_STOCKPRICE_WORK' # 데이터 읽을 collection
 
     # MongoDB 서버에 연결 
     client = MongoClient(ip_add)
+    '''
+    apple_records = connect_mongo_find.get_records_dataframe(client, db_name, col_name, {"symbol": "AAPL"})
+    specific_records = connect_mongo_find.get_records_dataframe(client, db_name, col_name, {"symbol": "AAPL", "iswork": "fin"})
+    '''
+    # symbols = connect_mongo_find.get_unfinished_ready_records(client, db_name, col_name)
     symbols = connect_mongo_find.get_records_dataframe(client, db_name, col_name)
 
     # symbol 컬럼만 리스트로 변환
     symbol_list = symbols['symbol'].tolist()
-    result_list = api_stockprice_yfinance.api_test_func(symbol_list=symbol_list[:1])
+    result_list = api_stockprice_yfinance.get_stockprice_yfinance_history(symbol_list=symbol_list)
 
-    col_name = f'COL_STOCK_PRICE_HISTORY' # 데이터 쓸 collection
+    # 히스토리 데이터 저장
+    col_name = f'COL_STOCKPRICE_HISTORY'
     connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name, result_list)
 
+    # 작업 상태 업데이트
+    col_name = f'COL_STOCKPRICE_WORK'
+    update_data_list = []
+    for index, row in symbols.iterrows():
+        update_data = {
+            'ref_id': row['_id'],  # 원본 레코드의 ID를 참조 ID로 저장
+            'iswork': 'fin',
+            'symbol': row['symbol']
+        }
+        update_data_list.append(update_data)
+    
+    # 새로운 레코드로 삽입
+    connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name, pd.DataFrame(update_data_list))
+
+    pass
+
+
+def small_test_yfinance_func():
+    '''
+    고려사항
+    1. 파라미터 - start time datetime.now-2d or select date , end time=datetime.now or datetime.now+1d , symbol, interval
+    2. 시간 - download vs hist download 압도적 빠름
+    3. 개별 로직 - 그냥 퍼와서 넣기 말고 또 있나? - 
+    
+    
+    4. 저장 - 기존 hist에 바로? 아니면 temp db 둠? 중복 처리 어떻게? # 25000000 record 옮기는데 약 7시간 소요 이거 기억해야해
+    5. 토탈 로직 - working 등록 어떻게? cron 이랑 interval 나누는게 프로세싱 이득 이긴할 듯. inter랑 cron 또는 cron 끼리 겹칠 때는 어떻? 못돌면 어떻? 
+        1. 주기적으로 밥 넣어 주기? work에?
+        2. 아니면 work를 분리 하거나 컬럼을 추가 해야 하나? 날짜 컬럼을? 
+        개별 func 에서 datetime 쓰는거는 위험하다 시간이 다다를수 있어 통일된 시간 값을 쓰게 수정해야 해. => 공통으로 빼서 무조건 이거 쓰게 해야 했는데 ㄷㄷ
+
+    '''
+    # symbols = ["NVDA", "AAPL", "MSFT", "AMZN", "META", "GOOGL", "TSLA", "GOOG", "BRK.B", "AVGO"]
+    # 심볼 리스트 (유효하지 않은 심볼 포함)
+    symbols = ['AAPL', 'MSFT', 'INVALID_SYMBOL', 'GOOGL']
+    # 현재 시간에서 2일 전과 1일 후로 설정
+    start_time = datetime.now() - timedelta(days=2)  # 2일 전
+    end_time = datetime.now() + timedelta(days=1)    # 1일 후
+    interval = f'1d' # None # f'1d' # f'1h' # f'1m' 1d default? 
+
+    # get_stockprice_yfinance_period_hist 수행 시간 측정
+    start_hist = time.time()  # 시작 시간 기록
+    df_history = api_stockprice_yfinance.get_stockprice_yfinance_period_hist(
+        symbols,
+        start_time=start_time,
+        end_time=end_time,
+        interval=interval
+    )
+    end_hist = time.time()  # 종료 시간 기록
+    hist_duration = end_hist - start_hist  # 수행 시간 계산
+
+    # get_stockprice_yfinance_period_down 수행 시간 측정
+    start_down = time.time()  # 시작 시간 기록
+    df_download = api_stockprice_yfinance.get_stockprice_yfinance_period_down(
+        symbols,
+        start_time=start_time,
+        end_time=end_time,
+        interval=interval
+    )
+    end_down = time.time()  # 종료 시간 기록
+    down_duration = end_down - start_down  # 수행 시간 계산
+
+    # 결과 출력
+    print(f"History Data Retrieval Time: {hist_duration:.2f} seconds")
+    print(f"Download Data Retrieval Time: {down_duration:.2f} seconds")
+
+    print(df_history)
+    print(df_download)
+    pass
+
+def test_yfinance_func():
+
+    config = read_config()
+    ip_add = config['MongoDB_local_shlee']['ip_add']
+    db_name = config['MongoDB_local_shlee']['db_name']
+    col_name = f'COL_STOCKPRICE_WORK' # 데이터 읽을 collection
+
+    # MongoDB 서버에 연결 
+    client = MongoClient(ip_add)
+
+    # symbols = connect_mongo_find.get_unfinished_ready_records(client, db_name, col_name)
+    symbols = connect_mongo_find.get_records_dataframe(client, db_name, col_name)
+
+    # symbol 컬럼만 리스트로 변환
+    symbol_list = symbols['symbol'].tolist() # start time and end time , symbol, 
+
+    result_list = api_stockprice_yfinance.get_stockprice_yfinance_history(symbol_list=symbol_list)
+
+    # 히스토리 데이터 저장
+    col_name = f'COL_STOCKPRICE_HISTORY'
+    connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name, result_list)
+
+    # 작업 상태 업데이트
+    col_name = f'COL_STOCKPRICE_WORK'
+    update_data_list = []
+    for index, row in symbols.iterrows():
+        update_data = {
+            'ref_id': row['_id'],  # 원본 레코드의 ID를 참조 ID로 저장
+            'iswork': 'fin',
+            'symbol': row['symbol']
+        }
+        update_data_list.append(update_data)
+    
+    # 새로운 레코드로 삽입
+    connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name, pd.DataFrame(update_data_list))
+
+
+    pass
+
+if __name__ == '__main__':
+
+    # small_test_yfinance_func()
+    # corp_list = ['010950.ks']
+    # api_stockprice_yfinance.get_stockprice_yfinance(corp_list)
+    # working_api_yfinance_stockpricing()
+
+    symbols = ["NVDA", "AAPL", "MSFT", "AMZN", "META", "GOOGL", "TSLA", "GOOG", "BRK.B", "AVGO"]
+    # 심볼 리스트 (유효하지 않은 심볼 포함)
+    # symbols = ['AAPL', 'MSFT', 'INVALID_SYMBOL', 'GOOGL']
+    df_testprint = api_stockprice_yfinance.get_stockprice_yfinance_daily(symbols)
+    print(df_testprint)
     pass
