@@ -6,6 +6,9 @@ output_dir = ./data/output/train_data
 [Fonts]
 korean_font = /System/Library/Fonts/AppleSDGothicNeo.ttc
 
+[mongoip]
+korean_font = 123.145.168.0
+
 [Ncloud_Key]
 X-NCP-APIGW-API-KEY-ID = client id
 X-NCP-APIGW-API-KEY = client secret
@@ -13,5 +16,9 @@ X-NCP-APIGW-API-KEY = client secret
 [Naver_Key]
 X-Naver-Client-Id = client id
 X-Naver-Client-Secret = client secret
+
+
+[mongoDB]
+ip = mongodb://localhost:27017/
 
 

@@ -17,7 +17,8 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# 직접 만든 class          
+# 직접 만든 class    
+from commons.config_reader import read_config # config read 용       
 from commons.mongo_insert_recode import connect_mongo
 from commons.api_send_requester import ApiRequester
 from commons.templates.sel_iframe_courtauction import iframe_test
@@ -74,15 +75,17 @@ def register_job_with_mongo(client, ip_add, db_name, col_name, func, insert_data
         
     except Exception as e:
         logging.error(f'Error in job {func.__name__}: {str(e)}')
-        client.close()
+        # client.close()
 
 def main(message):
+    config = read_config()
+    
     # MongoDB 연결 설정
-    mongo_client = MongoClient('mongodb://localhost:27017/')
+    mongo_client = MongoClient(config['mongoDB']['ip'])
     log_collection = setup_logging(mongo_client)  # 로깅 설정 및 로그 컬렉션 가져오기
 
     # 스케쥴러 등록 
-    ip_add = 'mongodb://localhost:27017/'
+    ip_add = config['mongoDB']['ip']
     db_name = 'lotte_db_sanghoonlee'
     col_name = 'lotte_col_sanghoonlee' 
 

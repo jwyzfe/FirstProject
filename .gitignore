@@ -1,5 +1,6 @@
 *.png
 *.json
+*.csv
 *.txt
 *.htm
 *.csv
@@ -7,3 +8,12 @@ downloads/
 __pycache__/
 config.ini
 venv/
+output.zip
+test.json
+test.xml
+data/
+rawData/*.json
+rawData/*.csv
+/csv
+stocksClovatestSentiment.py
+stockSentiment_withNaverClova.py

@@ -9,7 +9,7 @@ class connect_mongo:
     #     collection = db[collectionname]
 
     #     # 현재 시간 기록 => 다른 스케쥴러가 사용하는 시간과 같은지 확인 필요 
-    #     current_time = datetime.now()
+    #     current_time = datetime.now(pytz.timezone('Asia/Seoul'))
 
     #     try:
     #         # 딕셔너리 리스트 처리
@@ -42,7 +42,8 @@ class connect_mongo:
     #         return None
         
     # 모든 레코드 읽어오기
-    def get_records_cursor(client, dbname, collectionname, find_key=None):
+    @classmethod
+    def get_records_cursor(cls, client, dbname, collectionname, find_key=None):
         
         # 데이터베이스 선택
         db = client[dbname]  
@@ -51,21 +52,54 @@ class connect_mongo:
             records_cursor = collection.find()   # 모든 레코드 가져오기
         except Exception as e:
             print(f"Error reading records: {e}")
-            client.close()  # 클라이언트 연결 종료
+            # client.close()  # 클라이언트 연결 종료
 
         return records_cursor
         
-        # 모든 레코드 읽어오기
-    def get_records_dataframe(client, dbname, collectionname, find_key=None):
+    # 모든 레코드 읽어오기
+    @classmethod
+    def get_records_dataframe(cls, client, dbname, collectionname, find_key=None):
         
         # 데이터베이스 선택
         db = client[dbname]  
         collection = db[collectionname]
         try:
-            records_df = pd.DataFrame(list(collection.find()))    # 모든 레코드 가져오기
+            if find_key is None:
+                # find_key가 없으면 모든 레코드 가져오기
+                records_df = pd.DataFrame(list(collection.find()))
+            else:
+                # find_key가 있으면 해당 조건으로 필터링하여 가져오기
+                records_df = pd.DataFrame(list(collection.find(find_key)))
+            
         except Exception as e:
             print(f"Error reading records: {e}")
-            client.close()  # 클라이언트 연결 종료
+            # client.close()  # 클라이언트 연결 종료
 
         return records_df
+
+    @classmethod
+    def get_unfinished_ready_records(cls, client, db_name, col_name):
+        # 1. 먼저 완료된(fin) 레코드들의 ref_id 목록을 가져옵니다
+        finished_records = cls.get_records_dataframe(
+            client, 
+            db_name, 
+            col_name, 
+            {"iswork": "fin"}
+        )
+        finished_ref_ids = [] if finished_records.empty else finished_records['ref_id'].tolist()
+
+        # 2. ready 상태이면서 아직 완료되지 않은(ref_id가 finished_ref_ids에 없는) 레코드를 찾습니다
+        ready_records = cls.get_records_dataframe(
+            client, 
+            db_name, 
+            col_name, 
+            {"iswork": "ready"}
+        )
+        
+        if not ready_records.empty:
+            # finished_ref_ids에 없는 _id를 가진 레코드만 필터링
+            unfinished_records = ready_records[~ready_records['_id'].isin(finished_ref_ids)]
+            return unfinished_records
+        
+        return pd.DataFrame()  
     
