@@ -28,6 +28,7 @@ from commons.mongo_find_recode import connect_mongo as connect_mongo_find
 # 직접 구현한 부분을 import 해서 scheduler에 등록
 from devs.api_test_class import api_test_class
 from devs_shlee.api_stockprice_yfinance_daily import api_stockprice_yfinance 
+from devs_shlee.test_yahoo_scrap import yahoo_finance_scrap 
 from devs_oz.MarketSenti_yf import calc_market_senti
 from devs_jihunshim.bs4_news_hankyung import bs4_scrapping
 from devs_jiho.dartApi import CompanyFinancials
@@ -104,6 +105,59 @@ def register_job_with_mongo(client, ip_add, db_name, col_name_work, col_name_des
 
     return 
 
+# common 에 넣을 예정
+def register_job_with_mongo_cron(client, ip_add, db_name, col_name_work, col_name_dest, func, insert_data):
+    try:
+        if client is None:
+            client = MongoClient(ip_add)
+
+        # col_name_work가 None인지 확인
+        if col_name_work == '':
+            # col_name_work가 None인 경우
+            result_data = func()  # func() 호출
+            print("fin : func")
+            result_list = connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name_dest, result_data)
+            print("fin : insert data ")
+        else:
+            # col_name_work가 None이 아닌 경우
+            symbols = connect_mongo_find.get_unfinished_ready_records(client, db_name, col_name_work)
+            
+            # symbols가 비어있는지 확인
+            if symbols.empty:
+                print("zero record. skip schedule")
+                return
+            
+            # 20개씩 제한
+            BATCH_SIZE = 20
+            symbols_batch = symbols.head(BATCH_SIZE)  # 처음 20개만 선택
+            
+            # symbol 컬럼만 리스트로 변환
+            symbol_list = symbols_batch[insert_data].tolist()
+
+            # 선택된 symbol 처리
+            result_data = func(symbol_list)
+            print("fin : func")
+            result_list = connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name_dest, result_data)
+            print("fin : insert data ")
+        
+            # 처리된 20개의 symbol에 대해서만 상태 업데이트
+            update_data_list = []
+            for _, row in symbols_batch.iterrows():
+                update_data = {
+                    'ref_id': row['_id'],  # 원본 레코드의 ID를 참조 ID로 저장
+                    'iswork': 'fin',
+                    insert_data: row[insert_data]
+                }
+                update_data_list.append(update_data)
+
+            result_list = connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name_work, update_data_list)
+
+    except Exception as e:
+        print(e)
+        # client.close()  # 필요 시 클라이언트 닫기
+
+    return
+
 def run():
 
     config = read_config()
@@ -135,7 +189,8 @@ def run():
         # {"func" : bs4_scrapping.bs4_news_hankyung, "args" : "url", "target" : f'COL_SCRAPPING_HANKYUNG_HISTORY', "work" : f'COL_SCRAPPING_HANKYUNG_WORK'},
         # {"func" : CompanyFinancials.get_financial_statements, "args" : "corp_regist_num", "target" : f'COL_FINANCIAL_HISTORY', "work" : f'COL_FINANCIAL_WORK'}
         # # {"func" : api_test_class.api_test_func,  "args" : []}
-        {"func" : api_stockprice_yfinance.get_stockprice_yfinance_daily, "args" : "symbol", "target" : f'COL_STOCKPRICE_HISTORY', "work" : f'COL_STOCKPRICE_WORK_DAILY'}
+        {"func" : api_stockprice_yfinance.get_stockprice_yfinance_daily, "args" : "symbol", "target" : f'COL_STOCKPRICE_HISTORY', "work" : f'COL_STOCKPRICE_WORK_DAILY'},
+        {"func" : yahoo_finance_scrap.scrape_news, "args" : "symbol", "target" : f'COL_SCRAPPING_YAHOO_DAILY', "work" : ""}
 
     ]
 
@@ -151,7 +206,7 @@ def run():
         #                 # args=[args_list]
         #                 args=[client, ip_add, db_name, func['work'], func['target'], func['func'], func['args']] # 
         #                 )
-        scheduler.add_job(register_job_with_mongo,                         
+        scheduler.add_job(register_job_with_mongo_cron,                         
                     trigger='cron',  # 크론 트리거 사용
                     minute='*',      # 매 분마다 실행
                     second='0',      # 매 분의 0초에 실행
