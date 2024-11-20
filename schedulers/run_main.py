@@ -130,6 +130,10 @@ def run():
     work : 일 시킬 내용 들어있는 데이터 베이스 컬렉션 이름
 
     '''
+    '''
+    bs4_scrapping.bs4_news_hankyung # daily 버전은 10page 정도 보고 중복빼고 일단 넣기 => 다음에 중복 빼기 
+    
+    '''
     func_list = [
         {"func" : api_stockprice_yfinance.get_stockprice_yfinance, "args" : "symbol", "target" : f'COL_STOCKPRICE_HISTORY', "work" : f'COL_STOCKPRICE_WORK'},
         {"func" : calc_market_senti.get_market_senti_list, "args" : "symbol", "target" : f'COL_MARKETSENTI_HISTORY', "work" : f'COL_MARKETSENTI_WORK'},
