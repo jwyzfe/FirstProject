@@ -33,17 +33,24 @@ def scrape_news():
     # Yahoo Finance 페이지 열기
     driver.get('https://finance.yahoo.com/topic/stock-market-news/')
 
+    # 페이지 로딩 완료 대기
+    time.sleep(5)
+    
+    # 페이지를 조금 내리기 (스크롤)
+    driver.execute_script("window.scrollBy(0, 10);")  # 300px 만큼 내리기
+    time.sleep(2)
+    
     # 기사 데이터 저장 리스트
     headline_news = []  # 일반 기사 저장
     h2_news = []  # h2 섹션 기사 저장
     scroll_count = 0  # 스크롤 횟수
 
     # 1단계: 일반 기사 스크랩 (밑에서 위 방향으로, 스크롤 최대 10번)
-    while scroll_count < 10:
+    try:    
         soup = BeautifulSoup(driver.page_source, 'html.parser')
 
         # 기사 스크랩
-        headlines = soup.select('#nimbus-app > section > section > section > article  h3')
+        headlines = list(reversed(soup.select('#nimbus-app > section > section > section > article  h3')))
         for headline in headlines:
             title = headline.text.strip()
             link = headline.find_parent('a').get('href', '')
@@ -68,17 +75,15 @@ def scrape_news():
                     # 새 기사 출력
                     print(f"Title: {news_item.title}")
                     print(f"URL: {news_item.news_url}")
-                    print(f"Content: {news_item.contents}")  # Content의 앞 200자만 출력
+                    print(f"Content: {news_item.contents[:200]}")  # Content의 앞 200자만 출력
                     print(f"--" * 10)
 
                 except Exception as e:
                     print(f"Headline 기사 스크랩 중 오류 발생: {e} | Title: {title} | Link: {link}")
                     return None  # 예외 발생 시 함수 종료 및 None 반환
-
-        # 위로 스크롤
-        driver.execute_script("window.scrollBy(0, -window.innerHeight);")
-        scroll_count += 1
-        time.sleep(2)
+    except Exception as e:
+        print(f"Headline 스크랩 중 오류 발생: {e}")
+        
 
     # 2단계: h2 섹션 기사 스크랩
     while True:
@@ -111,7 +116,7 @@ def scrape_news():
                     # 새 h2 기사 출력
                     print(f"Title: {news_item.title}")
                     print(f"URL: {news_item.news_url}")
-                    print(f"Content: {news_item.contents}")  # Content의 앞 200자만 출력
+                    print(f"Content: {news_item.contents[:200]}")  # Content의 앞 200자만 출력
                     print(f"--" * 10)
 
                 except Exception as e:
