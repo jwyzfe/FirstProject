@@ -93,25 +93,15 @@ class api_stockprice_yfinance:
             if not data.empty:
                 result_df = pd.DataFrame()  # 최종 결과를 저장할 DataFrame
 
-                # 단일 심볼인 경우
-                if isinstance(data.columns, pd.Index):
-                    df_formatted = pd.DataFrame({
-                        'date': data.index,
-                        'open': data['Open'],
-                        'high': data['High'],
-                        'low': data['Low'],
-                        'close': data['Close'],
-                        'volume': data['Volume'],
-                        'dividends': data['Dividends'].sum(),  # 배당금 합계
-                        'stocksplits': data['Stock Splits'].sum(),  # 주식 분할 합계
-                        'symbol': symbol_list[0] if isinstance(symbol_list, list) else symbol_list
-                    })
-                    result_df = pd.concat([result_df, df_formatted])
-
-                # 여러 심볼인 경우
-                else:
+                # MultiIndex인 경우
+                if isinstance(data.columns, pd.MultiIndex):
                     for symbol in symbol_list:
-                        if symbol in data.columns.levels[1]:  # 해당 심볼의 데이터가 있는 경우
+                        if symbol in data.columns.levels[0]:  # 해당 심볼의 데이터가 있는 경우
+                            # NaN 값이 있는지 확인
+                            if data[symbol].isnull().values.any():
+                                print(f"Warning: Data for {symbol} contains NaN values. Skipping this symbol.")
+                                continue  # NaN이 있는 경우 해당 심볼을 건너뜀
+
                             df_formatted = pd.DataFrame({
                                 'date': data.index,
                                 'open': data[symbol]['Open'],
@@ -119,11 +109,31 @@ class api_stockprice_yfinance:
                                 'low': data[symbol]['Low'],
                                 'close': data[symbol]['Close'],
                                 'volume': data[symbol]['Volume'],
-                                'dividends': data[symbol]['Dividends'].sum(),  # 배당금 합계
-                                'stocksplits': data[symbol]['Stock Splits'].sum(),  # 주식 분할 합계
+                                'dividends': data[symbol]['Dividends'],  # 배당금 합계
+                                'stocksplits': data[symbol]['Stock Splits'],  # 주식 분할 합계
                                 'symbol': symbol
                             })
-                            result_df = pd.concat([result_df, df_formatted])
+                            result_df = pd.concat([result_df, df_formatted], ignore_index=True)
+
+                # 단일 심볼인 경우
+                else:
+                    # NaN 값이 있는지 확인
+                    if data.isnull().values.any():
+                        print(f"Warning: Data for {symbol_list[0]} contains NaN values. Skipping this symbol.")
+                        return pd.DataFrame()  # NaN이 있는 경우 빈 DataFrame 반환
+
+                    df_formatted = pd.DataFrame({
+                        'date': data.index,
+                        'open': data['Open'],
+                        'high': data['High'],
+                        'low': data['Low'],
+                        'close': data['Close'],
+                        'volume': data['Volume'],
+                        'dividends': data['Dividends'],  # 배당금 합계
+                        'stocksplits': data['Stock Splits'],  # 주식 분할 합계
+                        'symbol': symbol_list[0] if isinstance(symbol_list, list) else symbol_list
+                    })
+                    result_df = pd.concat([result_df, df_formatted], ignore_index=True)
 
                 return result_df.reset_index(drop=True)
             else:
@@ -133,7 +143,6 @@ class api_stockprice_yfinance:
         except Exception as e:
             print(f"Error downloading data: {e}")
             return pd.DataFrame()
-            
 
     def get_stockprice_yfinance_daily(symbol_list):
         # 예외처리 !!
@@ -220,8 +229,10 @@ def small_test_yfinance_func():
     
     4. 저장 - 기존 hist에 바로? 아니면 temp db 둠? 중복 처리 어떻게? # 25000000 record 옮기는데 약 7시간 소요 이거 기억해야해
     5. 토탈 로직 - working 등록 어떻게? cron 이랑 interval 나누는게 프로세싱 이득 이긴할 듯. inter랑 cron 또는 cron 끼리 겹칠 때는 어떻? 못돌면 어떻? 
-        1. 주기적으로 밥 넣어 주기? work에?
+        1. 주기적으로 밥 넣어 주기? work에? 
         2. 아니면 work를 분리 하거나 컬럼을 추가 해야 하나? 날짜 컬럼을? 
+        동일 work 쓸거면 분리하긴 해야 할 듯?
+        !!일단 귀찮으니까 따로 만들어 쓰고 그다음 합치던가 하자 
         개별 func 에서 datetime 쓰는거는 위험하다 시간이 다다를수 있어 통일된 시간 값을 쓰게 수정해야 해. => 공통으로 빼서 무조건 이거 쓰게 해야 했는데 ㄷㄷ
 
     '''
@@ -309,9 +320,10 @@ if __name__ == '__main__':
     # api_stockprice_yfinance.get_stockprice_yfinance(corp_list)
     # working_api_yfinance_stockpricing()
 
-    symbols = ["NVDA", "AAPL", "MSFT", "AMZN", "META", "GOOGL", "TSLA", "GOOG", "BRK.B", "AVGO"]
+    symbols = ["NVDA", "AAPL", "MSFT", "INVALID_SYMBOL", "AMZN", "META", "AVGO", "GOOGL", "TSLA", "GOOG", "BRK.B", '005930.KS', "010950.ks"]
     # 심볼 리스트 (유효하지 않은 심볼 포함)
     # symbols = ['AAPL', 'MSFT', 'INVALID_SYMBOL', 'GOOGL']
+    # symbols = ["NVDA"]
     df_testprint = api_stockprice_yfinance.get_stockprice_yfinance_daily(symbols)
     print(df_testprint)
     pass

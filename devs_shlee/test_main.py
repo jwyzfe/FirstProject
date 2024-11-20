@@ -5,53 +5,111 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from pymongo import MongoClient
 # time.sleep
 import time
-from datetime import datetime, timedelta  
+# 
+import pandas as pd
 
 # selenium driver 
 from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service as ChromeService
 
-# 직접 만든 class 
+# 직접 만든 class나 func을 참조하려면 꼭 필요 => main processor가 경로를 잘 몰라서 알려주어야함.
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
                 
-from commons.mongo_insert_recode import connect_mongo
+from commons.config_reader import read_config # config read 용       
+from commons.mongo_insert_recode import connect_mongo as connect_mongo_insert
 from commons.api_send_requester import ApiRequester
 from commons.templates.sel_iframe_courtauction import iframe_test
 from commons.templates.bs4_do_scrapping import bs4_scrapping
+from commons.mongo_find_recode import connect_mongo as connect_mongo_find
 
 # 직접 구현한 부분을 import 해서 scheduler에 등록
-from devs_shlee.api_stockprice_yfinance import api_stockprice_yfinance
+from devs.api_test_class import api_test_class
+from devs_shlee.api_stockprice_yfinance_daily import api_stockprice_yfinance 
+from devs_oz.MarketSenti_yf import calc_market_senti
+from devs_jihunshim.bs4_news_hankyung import bs4_scrapping
+from devs_jiho.dartApi import CompanyFinancials
+
+def api_test_func():
+    # api
+    city_list = ['도쿄','괌','모나코']
+    key_list = ['lat', 'lon']
+    pub_key = '39fb7b1c6d4e11e7483aabcb737ce7b0'
+    for city in city_list:
+        base_url = f'https://api.openweathermap.org/geo/1.0/direct'
+        
+        params={}
+        params['q'] = city
+        params['appid'] = pub_key
+
+        result_geo = ApiRequester.send_api(base_url, params, key_list)
+
+        base_url = f'https://api.openweathermap.org/data/2.5/forecast'
+        
+        params_w = {}
+        for geo in result_geo:
+            for key in key_list:
+                params_w[key] = geo[key]
+        params_w['appid'] = pub_key
+        result_cont = ApiRequester.send_api(base_url, params_w)
+
+        print(result_cont)
 
 
 # common 에 넣을 예정
-def register_job_with_mongo(client, ip_add, db_name, col_name, func, insert_data):
+def register_job_with_mongo(client, ip_add, db_name, col_name_work, col_name_dest, func, insert_data):
 
     try:
-        result_data = func(*insert_data)
         if client is None:
-            client = MongoClient(ip_add) # 관리 신경써야 함.
-        result_list = connect_mongo.insert_recode_in_mongo(client, db_name, col_name, result_data)       # print(f'insert id list count : {len(result_list.inserted_ids)}')
-    except Exception as e :
+            client = MongoClient(ip_add)
+        symbols = connect_mongo_find.get_unfinished_ready_records(client, db_name, col_name_work)
+          
+        # symbols가 비어있는지 확인
+        if symbols.empty:
+            print("zero recode. skip schedule")
+            return
+        
+        # 60개씩 제한 # 40 
+        BATCH_SIZE = 15
+        symbols_batch = symbols.head(BATCH_SIZE)  # 처음 60개만 선택
+        
+        # symbol 컬럼만 리스트로 변환 => 추후 더 조치 필요 
+        symbol_list = symbols_batch[insert_data].tolist()
+
+        # 선택된 symbol 처리
+        result_data = func(symbol_list)
+        if client is None:
+            client = MongoClient(ip_add)
+        result_list = connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name_dest, result_data)
+    
+        # 처리된 60개의 symbol에 대해서만 상태 업데이트
+        update_data_list = []
+        for _, row in symbols_batch.iterrows():
+            update_data = {
+                'ref_id': row['_id'],  # 원본 레코드의 ID를 참조 ID로 저장
+                'iswork': 'fin',
+                insert_data : row[insert_data]
+            }
+            update_data_list.append(update_data)
+
+        if client is None:
+            client = MongoClient(ip_add)
+        result_list = connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name_work, update_data_list)
+
+    except Exception as e:
         print(e)
-        client.close()
+        # client.close()
 
     return 
 
-def chunk_list(lst, n):
-    """리스트를 n 크기로 나누는 제너레이터 함수"""
-    for i in range(0, len(lst), n):
-        yield lst[i:i + n]
-        
 def run():
 
-    # 스케쥴러 등록 
-    # mongodb 가져올 수 있도록
-    ip_add = f'mongodb://localhost:27017/'
-    db_name = f'DB_SGMN' # db name 바꾸기
-    col_name = f'collection_name' # collection name 바꾸기
+    config = read_config()
+    ip_add = config['MongoDB_local_shlee']['ip_add']
+    db_name = config['MongoDB_local_shlee']['db_name']
+    col_name = f'COL_STOCKPRICE_WORK' # 데이터 읽을 collection
 
     # MongoDB 서버에 연결 
     client = MongoClient(ip_add) 
@@ -62,42 +120,38 @@ def run():
 
     # 여기에 함수 등록 
     # 넘길 변수 없으면 # insert_data = []
-    # insert_data = [symbols] # [val1,val2,val3]
+    insert_data = "symbol" # [val1,val2,val3]
     
-    # func_list = [
-    #     # {"func" : bs4_scrapping.do_scrapping, "args" : insert_data},
-    #     {"func" : api_stockprice_yfinance.api_test_func,  "args" : insert_data}
-    # ]
+    '''
+    func : 수행할 일 함수
+    args : 그 일에 필요한 파라미터 => work 디비에 등록하면, 해당 컬럼만 리스트로 전달
+    target : 최종 저장할 데이터 베이스 컬렉션 이름 
+    work : 일 시킬 내용 들어있는 데이터 베이스 컬렉션 이름
 
-    # 심볼 리스트를 50개씩 나누기
-    batch_size = 60  # 한 번에 처리할 심볼 수 약 48초?
-    symbol_batches = list(chunk_list(symbols, batch_size))
+    '''
+    func_list = [
+        # {"func" : api_stockprice_yfinance.get_stockprice_yfinance_history, "args" : "symbol", "target" : f'COL_STOCKPRICE_HISTORY', "work" : f'COL_STOCKPRICE_WORK'},
+        # {"func" : calc_market_senti.get_market_senti_list, "args" : "symbol", "target" : f'COL_MARKETSENTI_HISTORY', "work" : f'COL_MARKETSENTI_WORK'},
+        # {"func" : bs4_scrapping.bs4_news_hankyung, "args" : "url", "target" : f'COL_SCRAPPING_HANKYUNG_HISTORY', "work" : f'COL_SCRAPPING_HANKYUNG_WORK'},
+        # {"func" : CompanyFinancials.get_financial_statements, "args" : "corp_regist_num", "target" : f'COL_FINANCIAL_HISTORY', "work" : f'COL_FINANCIAL_WORK'}
+        # # {"func" : api_test_class.api_test_func,  "args" : []}
+        {"func" : api_stockprice_yfinance.get_stockprice_yfinance_daily, "args" : "symbol", "target" : f'COL_STOCKPRICE_HISTORY', "work" : f'COL_STOCKPRICE_WORK_DAILY'}
 
-    # 각 배치별로 func_list 생성
-    func_list = []
-    for symbol_batch in symbol_batches:
-        func_list.append({
-            "func": api_stockprice_yfinance.api_test_func,
-            "args": [symbol_batch]  # 각 배치를 리스트로 감싸서 전달
-        })
+    ]
 
-    # 각 func에 대해 스케줄 등록
-    for index, func in enumerate(func_list):
-        # 각 배치마다 시작 시간을 조금씩 다르게 설정 (30초 간격)
-        start_date = datetime.now() + timedelta(seconds=30 * index)
-        
-        scheduler.add_job(
-            register_job_with_mongo,
-            trigger='interval',
-            seconds=180,  # 3분마다 반복
-            start_date=start_date,  # 시작 시간을 다르게 설정
-            coalesce=True,
-            max_instances=1,
-            id=f"{func['func'].__name__}_{index}",  # 기존 ID 형식 유지
-            args=[client, ip_add, db_name, col_name, func['func'], func['args']]  # 기존 args 구조 유지
-        )
-        print(f"Scheduled {func['func'].__name__} batch {index} with {len(func['args'][0])} symbols, starting at {start_date}")
+    # register_job_with_mongo(client, ip_add, db_name, func_list[0]['work'], func_list[0]['target'], func_list[0]['func'], func_list[0]['args'])
 
+    for func in func_list:
+        scheduler.add_job(register_job_with_mongo,                         
+                        trigger='interval',
+                        seconds=15, # 5초 마다 반복  50
+                        coalesce=True, 
+                        max_instances=1,
+                        id=func['func'].__name__, # 독립적인 함수 이름 주어야 함.
+                        # args=[args_list]
+                        args=[client, ip_add, db_name, func['work'], func['target'], func['func'], func['args']] # 
+                        )
+    
     
     scheduler.start()
 

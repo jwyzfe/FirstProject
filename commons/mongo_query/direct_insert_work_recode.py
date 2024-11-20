@@ -4,9 +4,9 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # 직접 만든 class    
-from commons.config_reader import read_config # config read 용       
-from commons.mongo_insert_recode import connect_mongo as connect_mongo_insert
-from commons.mongo_find_recode import connect_mongo as connect_mongo_find
+from config_reader import read_config # config read 용       
+from mongo_insert_recode import connect_mongo as connect_mongo_insert
+from mongo_find_recode import connect_mongo as connect_mongo_find
 
 # mongo DB
 from pymongo import MongoClient
@@ -30,16 +30,18 @@ def make_direct_insert_work_recode(symbols_df) :
 if __name__ == '__main__' :
 
     config = read_config()
-    ip_add = f'mongodb://192.168.0.48:27017/'
+    ip_add = config['MongoDB_local_shlee']['ip_add']
+    db_name = config['MongoDB_local_shlee']['db_name']
     # MongoDB 연결 설정 
     # mongo_client = MongoClient(config['mongoDB']['ip'])
     mongo_client = MongoClient(ip_add)
 
+
     # 스케쥴러 등록 
     # ip_add = config['mongoDB']['ip']
-    db_name = 'DB_SGMN'
-    col_name_work = 'COL_STOCKPRICE_WORK'
-    col_name_work = 'COL_MARKETSENTI_WORK'
+    db_name = 'DB_TEST'
+    col_name_work = 'COL_STOCKPRICE_WORK_DAILY'
+    # col_name_work = 'COL_MARKETSENTI_WORK'
     col_name_find = 'COL_AMERICA_CORPLIST'
 
     # col_america_corplist에서 symbol 데이터 읽어오기
