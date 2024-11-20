@@ -75,7 +75,7 @@ def scrape_news():
                     # 새 기사 출력
                     print(f"Title: {news_item.title}")
                     print(f"URL: {news_item.news_url}")
-                    print(f"Content: {news_item.contents[:200]}")  # Content의 앞 200자만 출력
+                    print(f"Content: {news_item.contents}")  # Content의 앞 200자만 출력
                     print(f"--" * 10)
 
                 except Exception as e:
@@ -116,7 +116,7 @@ def scrape_news():
                     # 새 h2 기사 출력
                     print(f"Title: {news_item.title}")
                     print(f"URL: {news_item.news_url}")
-                    print(f"Content: {news_item.contents[:200]}")  # Content의 앞 200자만 출력
+                    print(f"Content: {news_item.contents}")  # Content의 앞 200자만 출력
                     print(f"--" * 10)
 
                 except Exception as e:
