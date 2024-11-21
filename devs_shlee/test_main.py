@@ -215,6 +215,24 @@ def run():
                     id=func['func'].__name__,  # 독립적인 함수 이름 주어야 함.
                     args=[client, ip_add, db_name, func['work'], func['target'], func['func'], func['args']]
                     )
+        
+        '''
+        scheduler.add_job(
+                    register_job_with_mongo_cron,                         
+                    trigger='cron',  # 크론 트리거 사용
+                    second='0',      # 매 분의 0초에 실행
+                    minute='*',      # 매 분마다 실행
+                    hour='*',        # 매 시간마다 실행
+                    day='*',         # 매일 실행
+                    month='*',       # 매월 실행
+                    day_of_week='*', # 매주 실행
+                    coalesce=True, 
+                    max_instances=1,
+                    id=func['func'].__name__,  # 독립적인 함수 이름 주어야 함.
+                    args=[client, ip_add, db_name, func['work'], func['target'], func['func'], func['args']]
+                )
+        
+        '''
     
     
     scheduler.start()
