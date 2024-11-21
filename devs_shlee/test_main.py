@@ -33,6 +33,7 @@ from devs_oz.MarketSenti_yf import calc_market_senti
 from devs_oz.news_scrapping_yahoo_headless import yahoo_finance_scrap
 from devs_jihunshim.bs4_news_hankyung import bs4_scrapping
 from devs_jiho.dartApi import CompanyFinancials
+from devs_jiho.ongoing_updateDailyTossComments import scrap_toss_comment
 
 def api_test_func():
     # api
@@ -163,8 +164,8 @@ def register_job_with_mongo_cron(client, ip_add, db_name, col_name_work, col_nam
 def run():
 
     config = read_config()
-    ip_add = config['MongoDB_local_shlee']['ip_add']
-    db_name = config['MongoDB_local_shlee']['db_name']
+    ip_add = config['MongoDB_remote']['ip_add']
+    db_name = config['MongoDB_remote']['db_name']
     col_name = f'COL_STOCKPRICE_WORK' # 데이터 읽을 collection
 
     # MongoDB 서버에 연결 
@@ -191,8 +192,9 @@ def run():
         # {"func" : bs4_scrapping.bs4_news_hankyung, "args" : "url", "target" : f'COL_SCRAPPING_HANKYUNG_HISTORY', "work" : f'COL_SCRAPPING_HANKYUNG_WORK'},
         # {"func" : CompanyFinancials.get_financial_statements, "args" : "corp_regist_num", "target" : f'COL_FINANCIAL_HISTORY', "work" : f'COL_FINANCIAL_WORK'}
         # # {"func" : api_test_class.api_test_func,  "args" : []}
-        {"func" : api_stockprice_yfinance.get_stockprice_yfinance_daily, "args" : "symbol", "target" : f'COL_STOCKPRICE_DAILY', "work" : f'COL_STOCKPRICE_WORK_DAILY'},
-        {"func" : yahoo_finance_scrap.scrape_news_schedule_version, "args" : "symbol", "target" : f'COL_SCRAPPING_YAHOO_DAILY', "work" : ""}
+        # {"func" : api_stockprice_yfinance.get_stockprice_yfinance_daily, "args" : "symbol", "target" : f'COL_STOCKPRICE_DAILY', "work" : f'COL_STOCKPRICE_DAILY_WORK'},
+        {"func" : yahoo_finance_scrap.scrape_news_schedule_version, "args" : "symbol", "target" : f'COL_SCRAPPING_NEWS_YAHOO_DAILY', "work" : ""},
+        {"func" : scrap_toss_comment.get_toss_comments, "args" : "symbol", "target" : f'COL_SCRAPPING_TOSS_COMMENT_DAILY', "work" : "COL_TOSS_COMMENT_DAILY_WORK"}
 
     ]
 
@@ -207,9 +209,11 @@ def run():
         #                 args=[client, ip_add, db_name, func['work'], func['target'], func['func'], func['args']] # 
         #                 )
         scheduler.add_job(register_job_with_mongo_cron,                         
-                    trigger='cron',  # 크론 트리거 사용
-                    minute='*',      # 매 분마다 실행
-                    second='0',      # 매 분의 0초에 실행
+                    # trigger='cron',  # 크론 트리거 사용
+                    # minute='*',      # 매 분마다 실행
+                    # second='0',      # 매 분의 0초에 실행
+                    trigger='interval',
+                    seconds=15, # 5초 마다 반복  50
                     coalesce=True, 
                     max_instances=1,
                     id=func['func'].__name__,  # 독립적인 함수 이름 주어야 함.

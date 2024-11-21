@@ -40,7 +40,8 @@ if __name__ == '__main__' :
     # 스케쥴러 등록 
     # ip_add = config['mongoDB']['ip']
     db_name = 'DB_SGMN'
-    col_name_work = 'COL_STOCKPRICE_WORK_DAILY'
+    col_name_work = 'COL_TOSS_COMMENT_DAILY_WORK'
+    col_name_work = 'COL_STOCKPRICE_DAILY_WORK'
     # col_name_work = 'COL_MARKETSENTI_WORK'
     col_name_find = 'COL_AMERICA_CORPLIST'
 

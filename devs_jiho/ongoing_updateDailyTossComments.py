@@ -61,121 +61,122 @@ def save_comments(stock_code, comments_data):
     except Exception as e:
         print(f"MongoDB 저장 중 오류 발생: {e}")
 
-def get_toss_comments(stock_code):
-    driver = webdriver.Chrome(service=service, options=chrome_options)
-    processed_comments = set()
-    commentsForTwoDays = []  # 딕셔너리 대신 리스트로 변경
-    
-    try:
-        url = f"https://tossinvest.com/stocks/{stock_code}/community"
-        driver.get(url)
+class scrap_toss_comment:
+    def get_toss_comments(stock_code):
+        driver = webdriver.Chrome(service=service, options=chrome_options)
+        processed_comments = set()
+        commentsForTwoDays = []  # 딕셔너리 대신 리스트로 변경
         
         try:
-            wait = WebDriverWait(driver, 10)
-            sort_button = wait.until(EC.presence_of_element_located(
-                (By.CSS_SELECTOR, "#stock-content > div > div > section > section > section > button > span")
-            ))
+            url = f"https://tossinvest.com/stocks/{stock_code}/community"
+            driver.get(url)
             
-            if sort_button.text == '최신순':
-                sort_button.click()
-            else:
-                sort_button.click()
-                time.sleep(1)
-            
-            time.sleep(2)
-            
-            last_height = driver.execute_script("return document.body.scrollHeight")
-            duplicate_count = 0
-            new_comments_count = 0
-            
-            while True:
-                comments = wait.until(EC.presence_of_all_elements_located(
-                    (By.CSS_SELECTOR, "#stock-content > div > div > section > section > ul > div > div > article")
+            try:
+                wait = WebDriverWait(driver, 10)
+                sort_button = wait.until(EC.presence_of_element_located(
+                    (By.CSS_SELECTOR, "#stock-content > div > div > section > section > section > button > span")
                 ))
                 
-                new_comments_found = False
-                for comment in comments:
-                    try:
-                        comment_text = comment.find_element(By.CSS_SELECTOR, 
-                            "#stock-content > div > div > section > section > ul > div > div > article > div > a > span:nth-child(2) > span").text
-                        date_element = comment.find_element(By.CSS_SELECTOR, 
-                            "#stock-content > div > div > section > section > ul > div > div> article > div > header > div > label > time")
-                        
-                        # datetime 전체 값과 date 값 분리 저장
-                        full_datetime = date_element.get_attribute("datetime")
-                        date_only = full_datetime.split('T')[0]
-                        
-                        # 현재 시간을 updated_at으로 설정
-                        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                        
-                        # 날짜 계산
-                        comment_date = datetime.strptime(date_only, '%Y-%m-%d')
-                        today = datetime.now().date()
-                        two_days_ago = today - timedelta(days=2)
-                        
-                        if comment_date.date() < two_days_ago:
-                            print("2일 이전의 댓글에 도달하여 수집을 종료합니다.")
-                            return commentsForTwoDays
-                        
-                        comment_id = f"{date_only}_{comment_text}"
-                        
-                        if comment_id in processed_comments:
-                            duplicate_count += 1
-                            continue
-                        
-                        processed_comments.add(comment_id)
-                        new_comments_found = True
-                        new_comments_count += 1
-                        
-                        # datetime, date, updated_at 모두 저장
-                        comment_row = {
-                            "datetime": full_datetime,     # 시간 포함
-                            "date": date_only,            # 날짜만
-                            "symbol": stock_code,
-                            "comment": comment_text,
-                            "updated_at": current_time    # 수집 시간 추가
-                        }
-                        commentsForTwoDays.append(comment_row)
-                        
-                        print(f"날짜: {date_only}, 새로운 댓글 수집 (새로 추가된 댓글: {new_comments_count}개)")
-                    
-                    except Exception as e:
-                        print(f"댓글 처리 중 오류 발생: {e}")
-                        continue
+                if sort_button.text == '최신순':
+                    sort_button.click()
+                else:
+                    sort_button.click()
+                    time.sleep(1)
                 
-                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                 time.sleep(2)
                 
-                new_height = driver.execute_script("return document.body.scrollHeight")
+                last_height = driver.execute_script("return document.body.scrollHeight")
+                duplicate_count = 0
+                new_comments_count = 0
                 
-                if not new_comments_found and new_height == last_height:
-                    print(f"수집 완료! 새로 추가된 댓글: {new_comments_count}개, 중복 제외된 댓글: {duplicate_count}개")
-                    break
+                while True:
+                    comments = wait.until(EC.presence_of_all_elements_located(
+                        (By.CSS_SELECTOR, "#stock-content > div > div > section > section > ul > div > div > article")
+                    ))
                     
-                last_height = new_height
-                
-            # 새로운 댓글이 있을 경우에만 파일 저장
-            if new_comments_count > 0:
-                save_comments(stock_code, commentsForTwoDays)
-            else:
-                print("새로운 댓글이 없어 파일을 업데이트하지 않았습니다.")
-                
-        except Exception as e:
-            print(f"최신순 정렬 처리 중 오류 발생: {e}")
-        
-        # DataFrame 변환 및 중복 제거
-        df = pd.DataFrame(commentsForTwoDays)
-        if not df.empty:
-            df = df.drop_duplicates(subset=['datetime', 'comment']) # 중복 제거 comment 기준으로 날짜만(date) 같으면 중복으로 인식인가? 아니면 전체가 같아야(datetime) 중복으로 인식?
-        
-        return df
+                    new_comments_found = False
+                    for comment in comments:
+                        try:
+                            comment_text = comment.find_element(By.CSS_SELECTOR, 
+                                "#stock-content > div > div > section > section > ul > div > div > article > div > a > span:nth-child(2) > span").text
+                            date_element = comment.find_element(By.CSS_SELECTOR, 
+                                "#stock-content > div > div > section > section > ul > div > div> article > div > header > div > label > time")
+                            
+                            # datetime 전체 값과 date 값 분리 저장
+                            full_datetime = date_element.get_attribute("datetime")
+                            date_only = full_datetime.split('T')[0]
+                            
+                            # 현재 시간을 updated_at으로 설정
+                            current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                            
+                            # 날짜 계산
+                            comment_date = datetime.strptime(date_only, '%Y-%m-%d')
+                            today = datetime.now().date()
+                            two_days_ago = today - timedelta(days=2)
+                            
+                            if comment_date.date() < two_days_ago:
+                                print("2일 이전의 댓글에 도달하여 수집을 종료합니다.")
+                                return commentsForTwoDays
+                            
+                            comment_id = f"{date_only}_{comment_text}"
+                            
+                            if comment_id in processed_comments:
+                                duplicate_count += 1
+                                continue
+                            
+                            processed_comments.add(comment_id)
+                            new_comments_found = True
+                            new_comments_count += 1
+                            
+                            # datetime, date, updated_at 모두 저장
+                            comment_row = {
+                                "datetime": full_datetime,     # 시간 포함
+                                "date": date_only,            # 날짜만
+                                "symbol": stock_code,
+                                "comment": comment_text,
+                                "updated_at": current_time    # 수집 시간 추가
+                            }
+                            commentsForTwoDays.append(comment_row)
+                            
+                            print(f"날짜: {date_only}, 새로운 댓글 수집 (새로 추가된 댓글: {new_comments_count}개)")
+                        
+                        except Exception as e:
+                            print(f"댓글 처리 중 오류 발생: {e}")
+                            continue
+                    
+                    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                    time.sleep(2)
+                    
+                    new_height = driver.execute_script("return document.body.scrollHeight")
+                    
+                    if not new_comments_found and new_height == last_height:
+                        print(f"수집 완료! 새로 추가된 댓글: {new_comments_count}개, 중복 제외된 댓글: {duplicate_count}개")
+                        break
+                        
+                    last_height = new_height
+                    
+                # # 새로운 댓글이 있을 경우에만 파일 저장
+                # if new_comments_count > 0:
+                #     save_comments(stock_code, commentsForTwoDays)
+                # else:
+                #     print("새로운 댓글이 없어 파일을 업데이트하지 않았습니다.")
+                    
+            except Exception as e:
+                print(f"최신순 정렬 처리 중 오류 발생: {e}")
+            
+            # DataFrame 변환 및 중복 제거
+            df = pd.DataFrame(commentsForTwoDays)
+            if not df.empty:
+                df = df.drop_duplicates(subset=['datetime', 'comment']) # 중복 제거 comment 기준으로 날짜만(date) 같으면 중복으로 인식인가? 아니면 전체가 같아야(datetime) 중복으로 인식?
+            
+            return df
 
-    except Exception as e:
-        print(f"에러 발생: {e}")
-        return []
-        
-    finally:
-        driver.quit()
+        except Exception as e:
+            print(f"에러 발생: {e}")
+            return []
+            
+        finally:
+            driver.quit()
 
 # 메인 실행 부분
 if __name__ == "__main__":
