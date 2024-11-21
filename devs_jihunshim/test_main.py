@@ -20,6 +20,7 @@ from commons.mongo_insert_recode import connect_mongo
 from commons.api_send_requester import ApiRequester
 from commons.templates.sel_iframe_courtauction import iframe_test
 from commons.templates.bs4_do_scrapping import bs4_scrapping
+from commons.mongo_find_recode import connect_mongo as mongo_find_recode
 
 # 직접 구현한 부분을 import 해서 scheduler에 등록
 from devs.api_test_class import api_test_class
@@ -67,39 +68,20 @@ def run():
 
     # 스케쥴러 등록 
     # mongodb 가져올 수 있도록
-    ip_add = f'mongodb://localhost:27017/'
+    ip_add = f'mongodb://192.168.0.48:27017/'
     db_name = f'db_name' # db name 바꾸기
     col_name = f'collection_jihunshim' # collection name 바꾸기
 
     # MongoDB 서버에 연결 
     client = MongoClient(ip_add) 
 
-    scheduler = BackgroundScheduler()
-    
-    url = f'http://underkg.co.kr/news'
-
-    # 여기에 함수 등록 
-    # 넘길 변수 없으면 # insert_data = []
-    insert_data = [url] # [val1,val2,val3]
-    
-    func_list = [
-        {"func" : bs4_scrapping.do_scrapping, "args" : insert_data},
-        {"func" : api_test_class.api_test_func,  "args" : []}
-    ]
-
-    for func in func_list:
-        scheduler.add_job(register_job_with_mongo,                         
-                        trigger='interval',
-                        seconds=5, # 5초 마다 반복 
-                        coalesce=True, 
-                        max_instances=1,
-                        id=func['func'].__name__, # 독립적인 함수 이름 주어야 함.
-                        # args=[args_list]
-                        args=[client, ip_add, db_name, col_name, func['func'], func['args']] # 
-                        )
-    
-    
-    scheduler.start()
+            # 2. ready 상태이면서 아직 완료되지 않은(ref_id가 finished_ref_ids에 없는) 레코드를 찾습니다
+    ready_records = mongo_find_recode.get_records_dataframe(
+            client, 
+            db_name, 
+            col_name, 
+            {"iswork": "ready"}
+        ) 
 
     while True:
 

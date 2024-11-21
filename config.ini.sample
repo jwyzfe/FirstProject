@@ -6,9 +6,6 @@ output_dir = ./data/output/train_data
 [Fonts]
 korean_font = /System/Library/Fonts/AppleSDGothicNeo.ttc
 
-[mongoip]
-korean_font = 123.145.168.0
-
 [Ncloud_Key]
 X-NCP-APIGW-API-KEY-ID = client id
 X-NCP-APIGW-API-KEY = client secret
@@ -17,8 +14,28 @@ X-NCP-APIGW-API-KEY = client secret
 X-Naver-Client-Id = client id
 X-Naver-Client-Secret = client secret
 
+[MongoDB_remote]
+ip_add = mongodb://192.168.0.50:27017/
+db_name = DB_SGMN
+col_name = collection name
 
-[mongoDB]
-ip = mongodb://localhost:27017/
 
+[MongoDB_remote_readonly]
+ip_add = mongodb://192.168.0.48:27017/
+db_name = DB_SGMN
+col_name = collection name
+
+
+[MongoDB_local]
+ip_add = mongodb://localhost:27017/ 
+db_name = DB_SGMN
+col_stockprice_work = COL_STOCKPRICE_WORK
+col_stockprice_history = COL_STOCKPRICE_HISTORY
+
+
+[MongoDB_local_shlee]
+ip_add = mongodb://192.168.0.91:27017/ # 각자 ip 주소
+db_name = DB_SGMN
+col_stockprice_work = COL_STOCKPRICE_WORK
+col_stockprice_history = COL_STOCKPRICE_HISTORY
 
