@@ -28,8 +28,9 @@ from commons.mongo_find_recode import connect_mongo as connect_mongo_find
 # 직접 구현한 부분을 import 해서 scheduler에 등록
 from devs.api_test_class import api_test_class
 from devs_shlee.api_stockprice_yfinance_daily import api_stockprice_yfinance 
-from devs_shlee.test_yahoo_scrap import yahoo_finance_scrap 
+# from devs_shlee.test_yahoo_scrap import yahoo_finance_scrap 
 from devs_oz.MarketSenti_yf import calc_market_senti
+from devs_oz.news_scrapping_yahoo_headless import yahoo_finance_scrap
 from devs_jihunshim.bs4_news_hankyung import bs4_scrapping
 from devs_jiho.dartApi import CompanyFinancials
 
@@ -190,8 +191,8 @@ def run():
         # {"func" : bs4_scrapping.bs4_news_hankyung, "args" : "url", "target" : f'COL_SCRAPPING_HANKYUNG_HISTORY', "work" : f'COL_SCRAPPING_HANKYUNG_WORK'},
         # {"func" : CompanyFinancials.get_financial_statements, "args" : "corp_regist_num", "target" : f'COL_FINANCIAL_HISTORY', "work" : f'COL_FINANCIAL_WORK'}
         # # {"func" : api_test_class.api_test_func,  "args" : []}
-        {"func" : api_stockprice_yfinance.get_stockprice_yfinance_daily, "args" : "symbol", "target" : f'COL_STOCKPRICE_HISTORY', "work" : f'COL_STOCKPRICE_WORK_DAILY'},
-        {"func" : yahoo_finance_scrap.scrape_news, "args" : "symbol", "target" : f'COL_SCRAPPING_YAHOO_DAILY', "work" : ""}
+        {"func" : api_stockprice_yfinance.get_stockprice_yfinance_daily, "args" : "symbol", "target" : f'COL_STOCKPRICE_DAILY', "work" : f'COL_STOCKPRICE_WORK_DAILY'},
+        {"func" : yahoo_finance_scrap.scrape_news_schedule_version, "args" : "symbol", "target" : f'COL_SCRAPPING_YAHOO_DAILY', "work" : ""}
 
     ]
 

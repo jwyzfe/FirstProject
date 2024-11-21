@@ -30,8 +30,8 @@ def make_direct_insert_work_recode(symbols_df) :
 if __name__ == '__main__' :
 
     config = read_config()
-    ip_add = config['MongoDB_local_shlee']['ip_add']
-    db_name = config['MongoDB_local_shlee']['db_name']
+    ip_add = config['MongoDB_remote']['ip_add']
+    db_name = config['MongoDB_remote']['db_name']
     # MongoDB 연결 설정 
     # mongo_client = MongoClient(config['mongoDB']['ip'])
     mongo_client = MongoClient(ip_add)
@@ -39,7 +39,7 @@ if __name__ == '__main__' :
 
     # 스케쥴러 등록 
     # ip_add = config['mongoDB']['ip']
-    db_name = 'DB_TEST'
+    db_name = 'DB_SGMN'
     col_name_work = 'COL_STOCKPRICE_WORK_DAILY'
     # col_name_work = 'COL_MARKETSENTI_WORK'
     col_name_find = 'COL_AMERICA_CORPLIST'
