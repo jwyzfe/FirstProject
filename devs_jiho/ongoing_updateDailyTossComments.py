@@ -115,7 +115,7 @@ def get_toss_comments(stock_code):
                         
                         if comment_date.date() < two_days_ago:
                             print("2일 이전의 댓글에 도달하여 수집을 종료합니다.")
-                            break
+                            return commentsForTwoDays
                         
                         comment_id = f"{date_only}_{comment_text}"
                         
