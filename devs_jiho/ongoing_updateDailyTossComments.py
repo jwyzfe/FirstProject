@@ -17,13 +17,13 @@ stock_code = ['041510']
 
 # ChromeDriver 설정 부분 수정
 chrome_options = Options()
-# chrome_options.add_argument("--headless")  # GUI 없이 실행하는 옵션 제거
+chrome_options.add_argument("--headless")  # GUI 없이 실행하는 옵션 제거
 chrome_options.add_argument("--start-maximized")  # 브라우저 창 최대화
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
 
 # ChromeDriver 자동 설치 및 서비스 설정
-service = Service(ChromeDriverManager().install())
+service = Service('/usr/bin/chromedriver')
 
 # ChromeDriver 실행
 browser = webdriver.Chrome(service=service, options=chrome_options)
