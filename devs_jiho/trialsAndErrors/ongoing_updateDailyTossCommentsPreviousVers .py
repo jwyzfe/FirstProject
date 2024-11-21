@@ -10,7 +10,6 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
 import os
 from pymongo import MongoClient
-import pandas as pd
 
 stock_code = ['041510']
 
@@ -100,24 +99,18 @@ def get_toss_comments(stock_code):
                             "#stock-content > div > div > section > section > ul > div > div > article > div > a > span:nth-child(2) > span").text
                         date_element = comment.find_element(By.CSS_SELECTOR, 
                             "#stock-content > div > div > section > section > ul > div > div> article > div > header > div > label > time")
-                        
-                        # datetime 전체 값과 date 값 분리 저장
-                        full_datetime = date_element.get_attribute("datetime")
-                        date_only = full_datetime.split('T')[0]
-                        
-                        # 현재 시간을 updated_at으로 설정
-                        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                        date_text = date_element.get_attribute("datetime").split('T')[0]
                         
                         # 날짜 계산
-                        comment_date = datetime.strptime(date_only, '%Y-%m-%d')
+                        comment_date = datetime.strptime(date_text, '%Y-%m-%d')
                         today = datetime.now().date()
                         two_days_ago = today - timedelta(days=2)
                         
                         if comment_date.date() < two_days_ago:
                             print("2일 이전의 댓글에 도달하여 수집을 종료합니다.")
-                            break
+                            return commentsForTwoDays
                         
-                        comment_id = f"{date_only}_{comment_text}"
+                        comment_id = f"{date_text}_{comment_text}"
                         
                         if comment_id in processed_comments:
                             duplicate_count += 1
@@ -127,17 +120,15 @@ def get_toss_comments(stock_code):
                         new_comments_found = True
                         new_comments_count += 1
                         
-                        # datetime, date, updated_at 모두 저장
+                        # 각 댓글을 날짜, 심볼, 내용이 포함된 딕셔너리로 저장
                         comment_row = {
-                            "datetime": full_datetime,     # 시간 포함
-                            "date": date_only,            # 날짜만
+                            "date": date_text,
                             "symbol": stock_code,
-                            "comment": comment_text,
-                            "updated_at": current_time    # 수집 시간 추가
+                            "comment": comment_text
                         }
                         commentsForTwoDays.append(comment_row)
                         
-                        print(f"날짜: {date_only}, 새로운 댓글 수집 (새로 추가된 댓글: {new_comments_count}개)")
+                        print(f"날짜: {date_text}, 새로운 댓글 수집 (새로 추가된 댓글: {new_comments_count}개)")
                     
                     except Exception as e:
                         print(f"댓글 처리 중 오류 발생: {e}")
@@ -163,12 +154,7 @@ def get_toss_comments(stock_code):
         except Exception as e:
             print(f"최신순 정렬 처리 중 오류 발생: {e}")
         
-        # DataFrame 변환 및 중복 제거
-        df = pd.DataFrame(commentsForTwoDays)
-        if not df.empty:
-            df = df.drop_duplicates(subset=['datetime', 'comment']) # 중복 제거 comment 기준으로 날짜만(date) 같으면 중복으로 인식인가? 아니면 전체가 같아야(datetime) 중복으로 인식?
-        
-        return df
+        return commentsForTwoDays
 
     except Exception as e:
         print(f"에러 발생: {e}")
