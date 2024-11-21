@@ -17,3 +17,4 @@ rawData/*.csv
 /csv
 stocksClovatestSentiment.py
 stockSentiment_withNaverClova.py
+arbitrage.py
