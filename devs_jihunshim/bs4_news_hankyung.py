@@ -39,7 +39,7 @@ class bs4_scrapping:
                                 news_data = {
                                     'title': title_link.text.strip(),
                                     'link': news_content_url,
-                                    'date': date.text.strip(),
+                                    'date': date.text.strip(), # need modify time 
                                     'content': content.text.strip(),
                                     'source_url': url  # 원본 URL 추가
                                 }
