@@ -21,18 +21,19 @@ class IndicatorElasticityFormulas:
     def execute_formula_func(cls, df_price, n):
         # 각 함수가 필요로 하는 일수 만큼 잘라서 넣기
         # 결과를 저장할 빈 DataFrame 생성
-        df_results = pd.DataFrame(columns=['Upper Band', 'Mid Band', 'Lower Band'])
+        df_totals = pd.DataFrame(columns=['Upper Band', 'Mid Band', 'Lower Band'])
 
         # df_price의 길이에서 n을 뺀 만큼 반복
         for i in range(n - 1, len(df_price)):
             # n일치의 Close 데이터 슬라이싱
             batch = df_price.iloc[i-n+1:i+1]
             # 볼린저 밴드 계산
-            df_bollinger = cls.bollinger_band(batch)
+            df_result = cls.bollinger_band(batch)
+            # 볼린저 밴드 계산
+            df_result = cls.bollinger_band(batch)
             # 결과를 DataFrame에 추가
-            df_results = pd.concat([df_results, df_bollinger], ignore_index=True)
-
-        return df_results
+            df_totals = pd.concat([df_totals, df_result], ignore_index=True)
+        return df_totals
     
     @classmethod
     def bollinger_band(cls, df_price, k=2): # 무조건 length 만큼 
