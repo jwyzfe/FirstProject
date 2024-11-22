@@ -168,6 +168,7 @@ def run():
         # {"func" : api_stockprice_yfinance.get_stockprice_yfinance_daily, "args" : "symbol", "target" : f'COL_STOCKPRICE_DAILY', "work" : f'COL_STOCKPRICE_DAILY_WORK'},
         {"func" : yahoo_finance_scrap.scrape_news_schedule_version, "args" : "symbol", "target" : f'COL_SCRAPPING_NEWS_YAHOO_DAILY', "work" : ""},
         {"func" : scrap_toss_comment.run_toss_comments, "args" : "symbol", "target" : f'COL_SCRAPPING_TOSS_COMMENT_DAILY', "work" : "COL_TOSS_COMMENT_DAILY_WORK"}
+        {"func" : sel_co.run_toss_comments, "args" : "symbol", "target" : f'COL_SCRAPPING_TOSS_COMMENT_DAILY', "work" : "COL_TOSS_COMMENT_DAILY_WORK"}
 
     ]
 
