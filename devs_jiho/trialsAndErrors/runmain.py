@@ -31,31 +31,6 @@ from devs_oz.MarketSenti_yf import calc_market_senti
 from devs_jihunshim.bs4_news_hankyung import bs4_scrapping
 from devs_jiho.dartApi import CompanyFinancials
 
-def api_test_func():
-    # api
-    city_list = ['도쿄','괌','모나코']
-    key_list = ['lat', 'lon']
-    pub_key = '39fb7b1c6d4e11e7483aabcb737ce7b0'
-    for city in city_list:
-        base_url = f'https://api.openweathermap.org/geo/1.0/direct'
-        
-        params={}
-        params['q'] = city
-        params['appid'] = pub_key
-
-        result_geo = ApiRequester.send_api(base_url, params, key_list)
-
-        base_url = f'https://api.openweathermap.org/data/2.5/forecast'
-        
-        params_w = {}
-        for geo in result_geo:
-            for key in key_list:
-                params_w[key] = geo[key]
-        params_w['appid'] = pub_key
-        result_cont = ApiRequester.send_api(base_url, params_w)
-
-        print(result_cont)
-
 
 # common 에 넣을 예정
 def register_job_with_mongo(client, ip_add, db_name, col_name_work, col_name_dest, func, insert_data):
@@ -130,12 +105,8 @@ def run():
     work : 일 시킬 내용 들어있는 데이터 베이스 컬렉션 이름
 
     '''
-    '''
-    bs4_scrapping.bs4_news_hankyung # daily 버전은 10page 정도 보고 중복빼고 일단 넣기 => 다음에 중복 빼기 
-    
-    '''
     func_list = [
-        {"func" : api_stockprice_yfinance.get_stockprice_yfinance_history, "args" : "symbol", "target" : f'COL_STOCKPRICE_HISTORY', "work" : f'COL_STOCKPRICE_WORK'},
+        {"func" : api_stockprice_yfinance.get_stockprice_yfinance, "args" : "symbol", "target" : f'COL_STOCKPRICE_HISTORY', "work" : f'COL_STOCKPRICE_WORK'},
         {"func" : calc_market_senti.get_market_senti_list, "args" : "symbol", "target" : f'COL_MARKETSENTI_HISTORY', "work" : f'COL_MARKETSENTI_WORK'},
         {"func" : bs4_scrapping.bs4_news_hankyung, "args" : "url", "target" : f'COL_SCRAPPING_HANKYUNG_HISTORY', "work" : f'COL_SCRAPPING_HANKYUNG_WORK'},
         {"func" : CompanyFinancials.get_financial_statements, "args" : "corp_regist_num", "target" : f'COL_FINANCIAL_HISTORY', "work" : f'COL_FINANCIAL_WORK'}
