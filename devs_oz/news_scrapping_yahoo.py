@@ -15,7 +15,7 @@ def yahoo_scrapping():
     chrome_options.add_argument("--disable-dev-shm-usage")  # /dev/shm 사용 비활성화
     
     # ChromeDriver 경로 설정
-    service = ChromeService('/usr/bin/chromedriver')  # ChromeDriver 경로
+    #service = ChromeService('/usr/bin/chromedriver')  # ChromeDriver 경로
 
     # ChromeDriver 실행
     driver = webdriver.Chrome(service=service, options=chrome_options)
