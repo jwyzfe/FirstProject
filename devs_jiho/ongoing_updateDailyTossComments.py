@@ -15,18 +15,7 @@ import pandas as pd
 stock_code = ['041510']
 
 
-# ChromeDriver 설정 부분 수정
-chrome_options = Options()
-chrome_options.add_argument("--headless")  # GUI 없이 실행하는 옵션 제거
-chrome_options.add_argument("--start-maximized")  # 브라우저 창 최대화
-chrome_options.add_argument("--no-sandbox")
-chrome_options.add_argument("--disable-dev-shm-usage")
 
-# ChromeDriver 자동 설치 및 서비스 설정
-service = Service('/usr/bin/chromedriver')
-
-# ChromeDriver 실행
-browser = webdriver.Chrome(service=service, options=chrome_options)
 
 # MongoDB 연결 설정
 client = MongoClient('mongodb://localhost:27017/')
@@ -62,13 +51,42 @@ def save_comments(stock_code, comments_data):
         print(f"MongoDB 저장 중 오류 발생: {e}")
 
 class scrap_toss_comment:
-    def get_toss_comments(stock_code):
+
+    @classmethod
+    def run_toss_comments(cls, stock_code_list):
+        combined_df = pd.DataFrame()  # 초기 빈 DataFrame 생성
+        
+        for code in stock_code_list:
+            df_comments = cls.get_toss_comments(code)  # 각 종목의 댓글을 DataFrame으로 가져옴
+            
+            # DataFrame이 비어있지 않은 경우에만 concat
+            if not df_comments.empty:
+                combined_df = pd.concat([combined_df, df_comments], ignore_index=True)
+        
+        return combined_df  # 최종 결과 반환
+
+
+    @classmethod
+    def get_toss_comments(cls, stock_code):
+        # ChromeDriver 설정 부분 수정
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")  # GUI 없이 실행하는 옵션
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+
+        # ChromeDriver 자동 설치 및 서비스 설정
+        service = Service('/usr/bin/chromedriver')
+
+        # ChromeDriver 실행
         driver = webdriver.Chrome(service=service, options=chrome_options)
         processed_comments = set()
-        commentsForTwoDays = []  # 딕셔너리 대신 리스트로 변경
+        
+        # DataFrame 초기화
+        commentsForTwoDays = pd.DataFrame(columns=["datetime", "date", "symbol", "comment", "updated_at"])
         
         try:
             url = f"https://tossinvest.com/stocks/{stock_code}/community"
+            print(f"symbol 1: {stock_code}")
             driver.get(url)
             
             try:
@@ -128,7 +146,7 @@ class scrap_toss_comment:
                             new_comments_found = True
                             new_comments_count += 1
                             
-                            # datetime, date, updated_at 모두 저장
+                            # DataFrame에 댓글 추가
                             comment_row = {
                                 "datetime": full_datetime,     # 시간 포함
                                 "date": date_only,            # 날짜만
@@ -136,7 +154,9 @@ class scrap_toss_comment:
                                 "comment": comment_text,
                                 "updated_at": current_time    # 수집 시간 추가
                             }
-                            commentsForTwoDays.append(comment_row)
+                            
+                            # DataFrame에 행 추가 (concat 사용)
+                            commentsForTwoDays = pd.concat([commentsForTwoDays, pd.DataFrame([comment_row])], ignore_index=True)
                             
                             print(f"날짜: {date_only}, 새로운 댓글 수집 (새로 추가된 댓글: {new_comments_count}개)")
                         
@@ -155,25 +175,14 @@ class scrap_toss_comment:
                         
                     last_height = new_height
                     
-                # # 새로운 댓글이 있을 경우에만 파일 저장
-                # if new_comments_count > 0:
-                #     save_comments(stock_code, commentsForTwoDays)
-                # else:
-                #     print("새로운 댓글이 없어 파일을 업데이트하지 않았습니다.")
-                    
             except Exception as e:
                 print(f"최신순 정렬 처리 중 오류 발생: {e}")
             
-            # DataFrame 변환 및 중복 제거
-            df = pd.DataFrame(commentsForTwoDays)
-            if not df.empty:
-                df = df.drop_duplicates(subset=['datetime', 'comment']) # 중복 제거 comment 기준으로 날짜만(date) 같으면 중복으로 인식인가? 아니면 전체가 같아야(datetime) 중복으로 인식?
-            
-            return df
+            return commentsForTwoDays  # DataFrame 반환
 
         except Exception as e:
             print(f"에러 발생: {e}")
-            return []
+            return pd.DataFrame()  # 빈 DataFrame 반환
             
         finally:
             driver.quit()
@@ -182,7 +191,7 @@ class scrap_toss_comment:
 if __name__ == "__main__":
     for code in stock_code:
         print(f"\n{code} 종목의 댓글을 수집합니다...")
-        comments_list = get_toss_comments(code)
+        comments_list = scrap_toss_comment.get_toss_comments(code)
         
         # 날짜별로 댓글을 그룹화하여 출력
         dates = set(comment["date"] for comment in comments_list)

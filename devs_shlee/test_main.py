@@ -8,10 +8,10 @@ import time
 # 
 import pandas as pd
 
-# selenium driver 
-from selenium import webdriver
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.chrome.service import Service as ChromeService
+# # selenium driver 
+# from selenium import webdriver
+# from webdriver_manager.chrome import ChromeDriverManager
+# from selenium.webdriver.chrome.service import Service as ChromeService
 
 # 직접 만든 class나 func을 참조하려면 꼭 필요 => main processor가 경로를 잘 몰라서 알려주어야함.
 import sys
@@ -34,32 +34,6 @@ from devs_oz.news_scrapping_yahoo_headless import yahoo_finance_scrap
 from devs_jihunshim.bs4_news_hankyung import bs4_scrapping
 from devs_jiho.dartApi import CompanyFinancials
 from devs_jiho.ongoing_updateDailyTossComments import scrap_toss_comment
-
-def api_test_func():
-    # api
-    city_list = ['도쿄','괌','모나코']
-    key_list = ['lat', 'lon']
-    pub_key = '39fb7b1c6d4e11e7483aabcb737ce7b0'
-    for city in city_list:
-        base_url = f'https://api.openweathermap.org/geo/1.0/direct'
-        
-        params={}
-        params['q'] = city
-        params['appid'] = pub_key
-
-        result_geo = ApiRequester.send_api(base_url, params, key_list)
-
-        base_url = f'https://api.openweathermap.org/data/2.5/forecast'
-        
-        params_w = {}
-        for geo in result_geo:
-            for key in key_list:
-                params_w[key] = geo[key]
-        params_w['appid'] = pub_key
-        result_cont = ApiRequester.send_api(base_url, params_w)
-
-        print(result_cont)
-
 
 # common 에 넣을 예정
 def register_job_with_mongo(client, ip_add, db_name, col_name_work, col_name_dest, func, insert_data):
@@ -130,7 +104,7 @@ def register_job_with_mongo_cron(client, ip_add, db_name, col_name_work, col_nam
                 return
             
             # 20개씩 제한
-            BATCH_SIZE = 20
+            BATCH_SIZE = 7
             symbols_batch = symbols.head(BATCH_SIZE)  # 처음 20개만 선택
             
             # symbol 컬럼만 리스트로 변환
@@ -191,10 +165,9 @@ def run():
         # {"func" : calc_market_senti.get_market_senti_list, "args" : "symbol", "target" : f'COL_MARKETSENTI_HISTORY', "work" : f'COL_MARKETSENTI_WORK'},
         # {"func" : bs4_scrapping.bs4_news_hankyung, "args" : "url", "target" : f'COL_SCRAPPING_HANKYUNG_HISTORY', "work" : f'COL_SCRAPPING_HANKYUNG_WORK'},
         # {"func" : CompanyFinancials.get_financial_statements, "args" : "corp_regist_num", "target" : f'COL_FINANCIAL_HISTORY', "work" : f'COL_FINANCIAL_WORK'}
-        # # {"func" : api_test_class.api_test_func,  "args" : []}
         # {"func" : api_stockprice_yfinance.get_stockprice_yfinance_daily, "args" : "symbol", "target" : f'COL_STOCKPRICE_DAILY', "work" : f'COL_STOCKPRICE_DAILY_WORK'},
         {"func" : yahoo_finance_scrap.scrape_news_schedule_version, "args" : "symbol", "target" : f'COL_SCRAPPING_NEWS_YAHOO_DAILY', "work" : ""},
-        {"func" : scrap_toss_comment.get_toss_comments, "args" : "symbol", "target" : f'COL_SCRAPPING_TOSS_COMMENT_DAILY', "work" : "COL_TOSS_COMMENT_DAILY_WORK"}
+        {"func" : scrap_toss_comment.run_toss_comments, "args" : "symbol", "target" : f'COL_SCRAPPING_TOSS_COMMENT_DAILY', "work" : "COL_TOSS_COMMENT_DAILY_WORK"}
 
     ]
 
@@ -209,11 +182,9 @@ def run():
         #                 args=[client, ip_add, db_name, func['work'], func['target'], func['func'], func['args']] # 
         #                 )
         scheduler.add_job(register_job_with_mongo_cron,                         
-                    # trigger='cron',  # 크론 트리거 사용
-                    # minute='*',      # 매 분마다 실행
-                    # second='0',      # 매 분의 0초에 실행
-                    trigger='interval',
-                    seconds=15, # 5초 마다 반복  50
+                    trigger='cron',  # 크론 트리거 사용
+                    minute='*',      # 매 분마다 실행
+                    second='0',      # 매 분의 0초에 실행
                     coalesce=True, 
                     max_instances=1,
                     id=func['func'].__name__,  # 독립적인 함수 이름 주어야 함.
