@@ -42,6 +42,7 @@ if __name__ == '__main__' :
     db_name = 'DB_SGMN'
     col_name_work = 'COL_TOSS_COMMENT_DAILY_WORK'
     col_name_work = 'COL_STOCKPRICE_DAILY_WORK'
+    col_name_work = 'COL_STOCKTWITS_COMMENT_DAILY_WORK'
     # col_name_work = 'COL_MARKETSENTI_WORK'
     col_name_find = 'COL_AMERICA_CORPLIST'
 

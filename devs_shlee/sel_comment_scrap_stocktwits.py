@@ -40,7 +40,7 @@ class comment_scrap_stocktwits :
                 data["datetime"].append(datetime_str)
                 data["content"].append(content)
                 
-                print("fin.")
+                # print("fin.")
             except Exception as e:
                 print(f"Error processing article: {e}")
                 continue
@@ -111,17 +111,17 @@ class comment_scrap_stocktwits :
 
     def run_stocktwits_scrap_list(symbol_list) -> pd.DataFrame:
 
-        # options = Options()
-        # options.add_argument("--headless")  # GUI 없이 실행
-        # options.add_argument("--no-sandbox")  # 샌드박스 비활성화
-        # options.add_argument("--disable-dev-shm-usage")  # /dev/shm 사용 비활성화
+        options = Options()
+        options.add_argument("--headless")  # GUI 없이 실행
+        options.add_argument("--no-sandbox")  # 샌드박스 비활성화
+        options.add_argument("--disable-dev-shm-usage")  # /dev/shm 사용 비활성화
 
-        # browser = webdriver.Chrome(service=Service('/usr/bin/chromedriver'), options=options)
+        browser = webdriver.Chrome(service=Service('/usr/bin/chromedriver'), options=options)
         
-        # selenium
-        webdriver_manager_directory = ChromeDriverManager().install() # 딱 한번 수행이라 밖에
-        # ChromeDriver 실행
-        browser = webdriver.Chrome(service=Service(webdriver_manager_directory))
+        # # selenium
+        # webdriver_manager_directory = ChromeDriverManager().install() # 딱 한번 수행이라 밖에
+        # # ChromeDriver 실행
+        # browser = webdriver.Chrome(service=Service(webdriver_manager_directory))
         # 결과를 저장할 데이터프레임 리스트
         df_list = []
         
@@ -145,11 +145,11 @@ class comment_scrap_stocktwits :
     
 
 if __name__ == '__main__':
-    # selenium
-    webdriver_manager_directory = ChromeDriverManager().install() # 딱 한번 수행이라 밖에
-    # ChromeDriver 실행
-    browser = webdriver.Chrome(service=Service(webdriver_manager_directory))
-    # try - finally 자원 관리 필요 
+    # # selenium
+    # webdriver_manager_directory = ChromeDriverManager().install() # 딱 한번 수행이라 밖에
+    # # ChromeDriver 실행
+    # browser = webdriver.Chrome(service=Service(webdriver_manager_directory))
+    # # try - finally 자원 관리 필요 
 
     # need symbol list version 
     symbol = 'AAPL'
@@ -162,6 +162,6 @@ if __name__ == '__main__':
         print(case_data)
     except Exception as e :
         print(e)
-    finally:
-        browser.quit()
+    # finally:
+    #     browser.quit()
     

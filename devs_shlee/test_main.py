@@ -28,6 +28,7 @@ from commons.mongo_find_recode import connect_mongo as connect_mongo_find
 # 직접 구현한 부분을 import 해서 scheduler에 등록
 from devs.api_test_class import api_test_class
 from devs_shlee.api_stockprice_yfinance_daily import api_stockprice_yfinance 
+from devs_shlee.sel_comment_scrap_stocktwits import comment_scrap_stocktwits 
 # from devs_shlee.test_yahoo_scrap import yahoo_finance_scrap 
 from devs_oz.MarketSenti_yf import calc_market_senti
 from devs_oz.news_scrapping_yahoo_headless import yahoo_finance_scrap
@@ -160,38 +161,65 @@ def run():
     work : 일 시킬 내용 들어있는 데이터 베이스 컬렉션 이름
 
     '''
-    func_list = [
-        # {"func" : api_stockprice_yfinance.get_stockprice_yfinance_history, "args" : "symbol", "target" : f'COL_STOCKPRICE_HISTORY', "work" : f'COL_STOCKPRICE_WORK'},
-        # {"func" : calc_market_senti.get_market_senti_list, "args" : "symbol", "target" : f'COL_MARKETSENTI_HISTORY', "work" : f'COL_MARKETSENTI_WORK'},
-        # {"func" : bs4_scrapping.bs4_news_hankyung, "args" : "url", "target" : f'COL_SCRAPPING_HANKYUNG_HISTORY', "work" : f'COL_SCRAPPING_HANKYUNG_WORK'},
-        # {"func" : CompanyFinancials.get_financial_statements, "args" : "corp_regist_num", "target" : f'COL_FINANCIAL_HISTORY', "work" : f'COL_FINANCIAL_WORK'}
-        # {"func" : api_stockprice_yfinance.get_stockprice_yfinance_daily, "args" : "symbol", "target" : f'COL_STOCKPRICE_DAILY', "work" : f'COL_STOCKPRICE_DAILY_WORK'},
-        {"func" : yahoo_finance_scrap.scrape_news_schedule_version, "args" : "symbol", "target" : f'COL_SCRAPPING_NEWS_YAHOO_DAILY', "work" : ""},
-        {"func" : scrap_toss_comment.run_toss_comments, "args" : "symbol", "target" : f'COL_SCRAPPING_TOSS_COMMENT_DAILY', "work" : "COL_TOSS_COMMENT_DAILY_WORK"}
-        {"func" : sel_co.run_toss_comments, "args" : "symbol", "target" : f'COL_SCRAPPING_TOSS_COMMENT_DAILY', "work" : "COL_TOSS_COMMENT_DAILY_WORK"}
+    # 스케줄 설정을 위한 딕셔너리
+    SCHEDULE_CONFIGS = {
+        'news_5h': {
+            'trigger': 'interval',
+            'hours': 5,
+        },
+        'comment_1h': {
+            'trigger': 'interval',
+            'hours': 1,
+        },
+        'comment_30m': {
+            'trigger': 'interval',
+            'minutes': 30,
+        }
+    }
 
+    func_list = [
+        {
+            "func": yahoo_finance_scrap.scrape_news_schedule_version, 
+            "args": "symbol", 
+            "target": 'COL_SCRAPPING_NEWS_YAHOO_DAILY', 
+            "work": "",
+            "schedule": "news_5h"
+        },
+        {
+            "func": scrap_toss_comment.run_toss_comments, 
+            "args": "symbol", 
+            "target": 'COL_SCRAPPING_TOSS_COMMENT_DAILY', 
+            "work": "COL_TOSS_COMMENT_DAILY_WORK",
+            "schedule": "comment_1h"
+        },
+        {
+            "func": comment_scrap_stocktwits.run_stocktwits_scrap_list, 
+            "args": "symbol", 
+            "target": 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY', 
+            "work": "COL_STOCKTWITS_COMMENT_DAILY_WORK",
+            "schedule": "comment_30m"
+        },
+        { 
+            "func": api_stockprice_yfinance.get_stockprice_yfinance_daily, 
+            "args": "symbol", 
+            "target": 'COL_STOCKPRICE_DAILY', 
+            "work": "COL_STOCKPRICE_DAILY_WORK",
+            "schedule": "comment_30m"
+        }
     ]
 
     for func in func_list:
-        # scheduler.add_job(register_job_with_mongo,                         
-        #                 trigger='interval',
-        #                 seconds=15, # 5초 마다 반복  50
-        #                 coalesce=True, 
-        #                 max_instances=1,
-        #                 id=func['func'].__name__, # 독립적인 함수 이름 주어야 함.
-        #                 # args=[args_list]
-        #                 args=[client, ip_add, db_name, func['work'], func['target'], func['func'], func['args']] # 
-        #                 )
-        scheduler.add_job(register_job_with_mongo_cron,                         
-                    trigger='cron',  # 크론 트리거 사용
-                    minute='*',      # 매 분마다 실행
-                    second='0',      # 매 분의 0초에 실행
-                    coalesce=True, 
-                    max_instances=1,
-                    id=func['func'].__name__,  # 독립적인 함수 이름 주어야 함.
-                    args=[client, ip_add, db_name, func['work'], func['target'], func['func'], func['args']]
-                    )
+        schedule_config = SCHEDULE_CONFIGS[func['schedule']]
         
+        scheduler.add_job(
+            register_job_with_mongo_cron,                         
+            trigger=schedule_config['trigger'],
+            coalesce=True, 
+            max_instances=1,
+            id=func['func'].__name__,
+            args=[client, ip_add, db_name, func['work'], func['target'], func['func'], func['args']],
+            **{k: v for k, v in schedule_config.items() if k != 'trigger'}
+        )
         '''
         scheduler.add_job(
                     register_job_with_mongo_cron,                         
