@@ -41,10 +41,9 @@ for url in company_urls:
     browser.get(url)
     print(f"현재 URL : {url}")
     scroll_count = 0
-    max_count = 500
+    max_count = 2
     prev_height = 0
     same_num_cnt = 0
-
 
     while scroll_count < max_count :
         ActionChains(browser).key_down(Keys.PAGE_DOWN).perform()
@@ -69,9 +68,62 @@ for url in company_urls:
             break
         prev_height = cur_height 
         
-    comments = browser.find_elements(By.CSS_SELECTOR, "#content > div.DiscussList_article__JEGTa > div")
+    comments = browser.find_elements(By.CSS_SELECTOR, "a.DiscussListItem_link__pxeaR")
     print(f"총 댓글 수 ({url}) : {len(comments)}")
-    for comment in comments:
-        print(comment.text.replace("\n","").strip())
+
+    for comment in comments : 
+        try:
+            title = comment.find_element(By.CSS_SELECTOR,"a.DiscussListItem_link__pxeaR > strong").text.strip()
+        except Exception:
+            title = "제목 없음"
+            
+        try:
+            date = comment.find_element(By.CSS_SELECTOR,"a.DiscussListItem_link__pxeaR > div.DiscussListItem_info__B716h > span:nth-child(2)").text.strip()
+        except Exception:
+            date = "날짜없음"
         
+        try:
+            contents = comment.find_element(By.CSS_SELECTOR,"a.DiscussListItem_link__pxeaR > p").text.strip()
+        except Exception:
+            contents = "내용없음"
+        
+        try:
+            like = comment.find_element(By.CSS_SELECTOR,"a.DiscussListItem_link__pxeaR > div.DiscussListItem_recomm__PyUH8 > span:nth-child(1)").text.strip()
+        except Exception:
+            like = "0"
+        
+        try:
+            dislike = comment.find_element(By.CSS_SELECTOR,"a.DiscussListItem_link__pxeaR > div.DiscussListItem_recomm__PyUH8 > span:nth-child(2)").text.strip()
+        except Exception:
+            dislike = "0"
+        
+        try:
+            view = comment.find_element(By.CSS_SELECTOR,"a.DiscussListItem_link__pxeaR > div.DiscussListItem_info__B716h > span:nth-child(3)").text.strip()
+        except Exception:
+            view = "0"
+            
+        print(f"제목 : {title}")
+        print(f"날짜 : {date}")
+        print(f"내용 : {contents}")
+        print(f"{like}")
+        print(f"{dislike}")
+        print(f": {view}")
+        print("-" * 50)
+
     print("\n" + "="*50 + "\n")
+    
+    
+    '''
+    
+     if client is None:
+            client = MongoClient(ip_add)
+        result_list = connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name_dest, result_data)
+    
+    # # 직접 만든 class나 func을 참조하려면 꼭 필요 => main processor가 경로를 잘 몰라서 알려주어야함.
+# import sys
+# import os
+# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                
+# from commons.mongo_insert_recode import connect_mongo as connect_mongo_insert
+
+    '''
