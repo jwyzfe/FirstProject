@@ -2,6 +2,12 @@ from selenium import webdriver
 import time
 from selenium.webdriver import ActionChains, Keys
 from selenium.webdriver.common.by import By
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from pymongo import MongoClient
+from commons.mongo_insert_recode import connect_mongo as connect_mongo_insert
+
 
 # 셀레늄 공통 부분
 opt = webdriver.ChromeOptions()
@@ -37,6 +43,7 @@ company_urls = [
     "https://m.stock.naver.com/worldstock/stock/ABBV.K/discuss"
 ]
 
+naver_stock_reply=[]
 for url in company_urls:
     browser.get(url)
     print(f"현재 URL : {url}")
@@ -102,28 +109,34 @@ for url in company_urls:
         except Exception:
             view = "0"
             
-        print(f"제목 : {title}")
-        print(f"날짜 : {date}")
-        print(f"내용 : {contents}")
-        print(f"{like}")
-        print(f"{dislike}")
-        print(f": {view}")
-        print("-" * 50)
+        all_print = {print(f"제목 : {title}"),
+                    print(f"날짜 : {date}"),
+                    print(f"내용 : {contents}"),
+                    print(f"{like}"),
+                    print(f"{dislike}"),
+                    print(f"{view}"),
+                    print("-" * 50)}
 
     print("\n" + "="*50 + "\n")
     
-    
-    '''
-    
-     if client is None:
-            client = MongoClient(ip_add)
-        result_list = connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name_dest, result_data)
-    
-    # # 직접 만든 class나 func을 참조하려면 꼭 필요 => main processor가 경로를 잘 몰라서 알려주어야함.
-# import sys
-# import os
-# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-                
-# from commons.mongo_insert_recode import connect_mongo as connect_mongo_insert
+    list = {
+            'title' : title,
+            'date' : date,
+            'contents' : contents,
+            'like' : like,
+            'dislike' : dislike,
+            'view' : view
+        }
+    naver_stock_reply.append(list)
 
-    '''
+    # 스케쥴러 등록 
+    # mongodb 가져올 수 있도록
+    ip_add = f'mongodb://192.168.0.135:27017/'
+    db_name = f'DB_SGMN' # db name 바꾸기
+    col_name = f'COL_NAVER_STOCK_REPLY' # collection name 바꾸기
+    
+    # MongoDB 서버에 연결
+    client = MongoClient(ip_add)
+
+result_list = connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name, all_print)
+    
