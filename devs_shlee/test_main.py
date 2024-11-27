@@ -105,7 +105,7 @@ def register_job_with_mongo_cron(client, ip_add, db_name, col_name_work, col_nam
                 return
             
             # 20개씩 제한
-            BATCH_SIZE = 7
+            BATCH_SIZE = 1
             symbols_batch = symbols.head(BATCH_SIZE)  # 처음 20개만 선택
             
             # symbol 컬럼만 리스트로 변환
@@ -174,38 +174,53 @@ def run():
         'comment_30m': {
             'trigger': 'interval',
             'minutes': 30,
+        },
+        'comment_5m': {
+            'trigger': 'interval',
+            'minutes': 5,
+        },
+        'test_5s': {
+            'trigger': 'interval',
+            'seconds': 5,
         }
     }
 
     func_list = [
-        {
-            "func": yahoo_finance_scrap.scrape_news_schedule_version, 
-            "args": "symbol", 
-            "target": 'COL_SCRAPPING_NEWS_YAHOO_DAILY', 
-            "work": "",
-            "schedule": "news_5h"
-        },
-        {
-            "func": scrap_toss_comment.run_toss_comments, 
-            "args": "symbol", 
-            "target": 'COL_SCRAPPING_TOSS_COMMENT_DAILY', 
-            "work": "COL_TOSS_COMMENT_DAILY_WORK",
-            "schedule": "comment_1h"
-        },
-        {
+            {
             "func": comment_scrap_stocktwits.run_stocktwits_scrap_list, 
             "args": "symbol", 
             "target": 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY', 
             "work": "COL_STOCKTWITS_COMMENT_DAILY_WORK",
-            "schedule": "comment_30m"
-        },
-        { 
-            "func": api_stockprice_yfinance.get_stockprice_yfinance_daily, 
-            "args": "symbol", 
-            "target": 'COL_STOCKPRICE_DAILY', 
-            "work": "COL_STOCKPRICE_DAILY_WORK",
-            "schedule": "comment_30m"
+            "schedule": "comment_5m"
         }
+        # {
+        #     "func": yahoo_finance_scrap.scrape_news_schedule_version, 
+        #     "args": "symbol", 
+        #     "target": 'COL_SCRAPPING_NEWS_YAHOO_DAILY', 
+        #     "work": "",
+        #     "schedule": "news_5h"
+        # },
+        # {
+        #     "func": scrap_toss_comment.run_toss_comments, 
+        #     "args": "symbol", 
+        #     "target": 'COL_SCRAPPING_TOSS_COMMENT_DAILY', 
+        #     "work": "COL_TOSS_COMMENT_DAILY_WORK",
+        #     "schedule": "comment_1h"
+        # },
+        # {
+        #     "func": comment_scrap_stocktwits.run_stocktwits_scrap_list, 
+        #     "args": "symbol", 
+        #     "target": 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY', 
+        #     "work": "COL_STOCKTWITS_COMMENT_DAILY_WORK",
+        #     "schedule": "comment_30m"
+        # },
+        # { 
+        #     "func": api_stockprice_yfinance.get_stockprice_yfinance_daily, 
+        #     "args": "symbol", 
+        #     "target": 'COL_STOCKPRICE_DAILY', 
+        #     "work": "COL_STOCKPRICE_DAILY_WORK",
+        #     "schedule": "comment_30m"
+        # }
     ]
 
     for func in func_list:

@@ -283,7 +283,7 @@ if __name__ == '__main__':
     try:
         # 시작 시간 기록
         start_time = time.time()
-    
+
         case_data = comment_scrap_stocktwits.run_stocktwits_scrap_list(symbol)
 
         # 실행 시간 계산
