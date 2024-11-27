@@ -39,3 +39,6 @@ db_name = DB_SGMN
 col_stockprice_work = COL_STOCKPRICE_WORK
 col_stockprice_history = COL_STOCKPRICE_HISTORY
 
+[stocktwits]
+id = 
+pw = 

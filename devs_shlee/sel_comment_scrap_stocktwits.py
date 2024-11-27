@@ -6,10 +6,17 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.chrome.options import Options
 
+# 직접 만든 class나 func을 참조하려면 꼭 필요 => main processor가 경로를 잘 몰라서 알려주어야함.
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                
+from commons.config_reader import read_config # config read 용     
 
 import pandas as pd
 import re
 import time
+import platform
 from selenium.webdriver.common.keys import Keys # 내가 입력(input, 마치 마우스나 키보드 처럼) 할 것
 from selenium.webdriver import ActionChains as ac
 
@@ -73,6 +80,7 @@ class comment_scrap_stocktwits :
 
 
     def get_data(browser: webdriver.Chrome, symbol) -> pd.DataFrame:
+
         data = {
             "symbol": [],
             "datetime": [],
@@ -109,7 +117,7 @@ class comment_scrap_stocktwits :
         # DataFrame 생성 및 반환
         return pd.DataFrame(data)
     
-    def select_court(browser: webdriver.Chrome, symbol) -> webdriver.Chrome:
+    def scroll_down_and_login(browser: webdriver.Chrome, symbol) -> webdriver.Chrome:
                 
         target_url = f'https://stocktwits.com/symbol/{symbol}'
         # - 주소 입력(https://www.w3schools.com/)
@@ -146,109 +154,109 @@ class comment_scrap_stocktwits :
         로그인 화면 existing 링크 
         body > div.ReactModalPortal > div > div > div > div.flex.flex-col.justify-between.items-center.SignUpButtons_socialMediaButtons__UVFBA.w-full.gap-y-2.max-w-\[268px\].h-\[162px\].w-full > a.SignUpButtons_logInLink__vrXFQ.text-blue-ada.text-sm.h-\[18px\]
         '''
+        # # test ver
+        # for num in range(0,5):
+        #     ac(browser).key_down(Keys.PAGE_DOWN).perform() # 브라우저를 선택해야해 # 탭별로 컨트롤 가능하기 때문
+        #     # browser.implicitly_wait(50) # 로딩이 끝난걸 알아서 탐지 # sleep 보다 동작 느림 # handleless 방식도 있음
+        #     time.sleep(1) 
+        #     current_height = browser.execute_script(f'return document.documentElement.scrollTop')
+        config = read_config()
+        id = config['stocktwits']['id']
+        pw = config['stocktwits']['pw']
 
-        # test ver
-        for num in range(0,5):
+        # 로그인 페이지 나오게 하는 부분 로그인 되어 있으면 그냥 이거만 
+        for num in range(0,25):
             ac(browser).key_down(Keys.PAGE_DOWN).perform() # 브라우저를 선택해야해 # 탭별로 컨트롤 가능하기 때문
             # browser.implicitly_wait(50) # 로딩이 끝난걸 알아서 탐지 # sleep 보다 동작 느림 # handleless 방식도 있음
             time.sleep(1) 
             current_height = browser.execute_script(f'return document.documentElement.scrollTop')
 
-        # # 로그인 페이지 나오게 하는 부분
-        # for num in range(0,25):
-        #     ac(browser).key_down(Keys.PAGE_DOWN).perform() # 브라우저를 선택해야해 # 탭별로 컨트롤 가능하기 때문
-        #     # browser.implicitly_wait(50) # 로딩이 끝난걸 알아서 탐지 # sleep 보다 동작 느림 # handleless 방식도 있음
-        #     time.sleep(1) 
-        #     current_height = browser.execute_script(f'return document.documentElement.scrollTop')
+        # 로그인 페이지 나온 이후에 해야할 동작
+        # 최초 google auth 외에 직접 로그인 하는 창으로 이동
+        # 로그인 상태 확인
+        try:
+            time.sleep(1)
+            # 로그인 모달이 있는지 확인 (로그인되지 않은 상태)
+            login_modal = browser.find_element(By.CSS_SELECTOR, '.ReactModalPortal')
+            
+            blue_link_tag = f'body > div.ReactModalPortal > div > div > div > div.flex.flex-col.justify-between.items-center.SignUpButtons_socialMediaButtons__UVFBA.w-full.gap-y-2.max-w-\\[268px\\].h-\\[162px\\].w-full > a.SignUpButtons_logInLink__vrXFQ.text-blue-ada.text-sm.h-\\[18px\\]'
+            element_blue_link = browser.find_element(by=By.CSS_SELECTOR, value=blue_link_tag)
+            element_blue_link.click()
 
-        # time.sleep(1)
-        # # 로그인 페이지 나온 이후에 해야할 동작
-        # # 최초 google auth 외에 직접 로그인 하는 창으로 이동
-        # blue_link_tag = f'body > div.ReactModalPortal > div > div > div > div.flex.flex-col.justify-between.items-center.SignUpButtons_socialMediaButtons__UVFBA.w-full.gap-y-2.max-w-\\[268px\\].h-\\[162px\\].w-full > a.SignUpButtons_logInLink__vrXFQ.text-blue-ada.text-sm.h-\\[18px\\]'
-        # element_blue_link = browser.find_element(by=By.CSS_SELECTOR, value=blue_link_tag)
-        # element_blue_link.click()
+            time.sleep(1)
+            label_tag = f'#Layout > div.OnboardingContainer_container__lsIXK.relative.w-full.tabletSm\\|h-screen.tabletSm\\|w-full.tabletSm\\|grid.tabletSm\\|grid-flow-row.tabletSm-down\\|grid-cols-none > div.flex.flex-col.justify-center.items-center.bg-white > div > div.Onboarding_form__Didqp.mb-5.tabletSm-down\\|mb-10 > form > div:nth-child(1) > label'
+            element_label = browser.find_element(by=By.CSS_SELECTOR, value=label_tag)
+            element_label.click()
 
-        # time.sleep(4)
-        # label_tag = f'#Layout > div.OnboardingContainer_container__lsIXK.relative.w-full.tabletSm\\|h-screen.tabletSm\\|w-full.tabletSm\\|grid.tabletSm\\|grid-flow-row.tabletSm-down\\|grid-cols-none > div.flex.flex-col.justify-center.items-center.bg-white > div > div.Onboarding_form__Didqp.mb-5.tabletSm-down\\|mb-10 > form > div:nth-child(1) > label'
-        # element_label = browser.find_element(by=By.CSS_SELECTOR, value=label_tag)
-        # element_label.click()
+            time.sleep(1)
+            id_tag = f'#Layout > div.OnboardingContainer_container__lsIXK.relative.w-full.tabletSm\\|h-screen.tabletSm\\|w-full.tabletSm\\|grid.tabletSm\\|grid-flow-row.tabletSm-down\\|grid-cols-none > div.flex.flex-col.justify-center.items-center.bg-white > div > div.Onboarding_form__Didqp.mb-5.tabletSm-down\\|mb-10 > form > div:nth-child(1) > input'
+            id_str = id # readconfig 구현하기 headless 도
+            element_id = browser.find_element(by=By.CSS_SELECTOR, value=id_tag)
+            element_id.send_keys(id_str)
 
-        # time.sleep(1)
-        # # 문제가 있는 email 작성하는 input tag
-        # id_tag = f'#Layout > div.OnboardingContainer_container__lsIXK.relative.w-full.tabletSm\\|h-screen.tabletSm\\|w-full.tabletSm\\|grid.tabletSm\\|grid-flow-row.tabletSm-down\\|grid-cols-none > div.flex.flex-col.justify-center.items-center.bg-white > div > div.Onboarding_form__Didqp.mb-5.tabletSm-down\\|mb-10 > form > div:nth-child(1) > input'
-        # id_str = # readconfig 구현하기 headless 도
-        # element_id = browser.find_element(by=By.CSS_SELECTOR, value=id_tag)
-        # element_id.send_keys(id_str)
+            time.sleep(1)
+            pw_tag = f'#Layout > div.OnboardingContainer_container__lsIXK.relative.w-full.tabletSm\\|h-screen.tabletSm\\|w-full.tabletSm\\|grid.tabletSm\\|grid-flow-row.tabletSm-down\\|grid-cols-none > div.flex.flex-col.justify-center.items-center.bg-white > div > div.Onboarding_form__Didqp.mb-5.tabletSm-down\\|mb-10 > form > div:nth-child(2) > input'
+            pw_str = pw # readconfig 구현하기 headless 도
+            element_pw = browser.find_element(by=By.CSS_SELECTOR, value=pw_tag)
+            element_pw.send_keys(pw_str)
 
-        # time.sleep(1)
-        # # pw tag는 바로 잘 찾아지는 현상 
-        # pw_tag = f'#Layout > div.OnboardingContainer_container__lsIXK.relative.w-full.tabletSm\\|h-screen.tabletSm\\|w-full.tabletSm\\|grid.tabletSm\\|grid-flow-row.tabletSm-down\\|grid-cols-none > div.flex.flex-col.justify-center.items-center.bg-white > div > div.Onboarding_form__Didqp.mb-5.tabletSm-down\\|mb-10 > form > div:nth-child(2) > input'
-        # pw_str = # readconfig 구현하기 headless 도
-        # element_pw = browser.find_element(by=By.CSS_SELECTOR, value=pw_tag)
-        # element_pw.send_keys(pw_str)
+            time.sleep(1)
+            btn_tag = f'#Layout > div.OnboardingContainer_container__lsIXK.relative.w-full.tabletSm\\|h-screen.tabletSm\\|w-full.tabletSm\\|grid.tabletSm\\|grid-flow-row.tabletSm-down\\|grid-cols-none > div.flex.flex-col.justify-center.items-center.bg-white > div > div.Onboarding_form__Didqp.mb-5.tabletSm-down\\|mb-10 > form > button'
+            element_btn = browser.find_element(by=By.CSS_SELECTOR, value=btn_tag)
+            element_btn.click() 
 
-        # time.sleep(1)
-        # # 값을 넣고 버튼이 활성화 되고 tag를 찾아도 동일 문제 발생  
-        # btn_tag = f'#Layout > div.OnboardingContainer_container__lsIXK.relative.w-full.tabletSm\\|h-screen.tabletSm\\|w-full.tabletSm\\|grid.tabletSm\\|grid-flow-row.tabletSm-down\\|grid-cols-none > div.flex.flex-col.justify-center.items-center.bg-white > div > div.Onboarding_form__Didqp.mb-5.tabletSm-down\\|mb-10 > form > button'
-        # element_btn = browser.find_element(by=By.CSS_SELECTOR, value=btn_tag)
-        # element_btn.click() 
+            # 로그인 페이지 나오게 하는 부분
+            for num in range(0,25):
+                ac(browser).key_down(Keys.PAGE_DOWN).perform() # 브라우저를 선택해야해 # 탭별로 컨트롤 가능하기 때문
+                # browser.implicitly_wait(50) # 로딩이 끝난걸 알아서 탐지 # sleep 보다 동작 느림 # handleless 방식도 있음
+                time.sleep(1) 
+                current_height = browser.execute_script(f'return document.documentElement.scrollTop')
 
-        # # 로그인 페이지 나오게 하는 부분
-        # for num in range(0,25):
-        #     ac(browser).key_down(Keys.PAGE_DOWN).perform() # 브라우저를 선택해야해 # 탭별로 컨트롤 가능하기 때문
-        #     # browser.implicitly_wait(50) # 로딩이 끝난걸 알아서 탐지 # sleep 보다 동작 느림 # handleless 방식도 있음
-        #     time.sleep(1) 
-        #     current_height = browser.execute_script(f'return document.documentElement.scrollTop')
+        except Exception as e:
+            # 로그인 모달이 없는 경우 (이미 로그인된 상태)
+            print("Already logged in or login not required")
+            pass
 
         return browser
 
-
-    # 쓸 때 browser 관리 
-    def run(browser: webdriver.Chrome, symbol) -> pd.DataFrame:
+    
+    def get_browser():
+        options = Options()
         
-        options = Options()
-        options.add_argument("--headless")  # GUI 없이 실행
-        options.add_argument("--no-sandbox")  # 샌드박스 비활성화
-        options.add_argument("--disable-dev-shm-usage")  # /dev/shm 사용 비활성화
-
-        driver = webdriver.Chrome(service=Service('/usr/bin/chromedriver'), options=options)
-
-        comment_scrap_stocktwits.select_court(browser, symbol) 
-        return comment_scrap_stocktwits.get_data(browser, symbol)
-    
-
-    def run_stocktwits_scrap(symbol) -> pd.DataFrame:
-
-        options = Options()
-        options.add_argument("--headless")  # GUI 없이 실행
-        options.add_argument("--no-sandbox")  # 샌드박스 비활성화
-        options.add_argument("--disable-dev-shm-usage")  # /dev/shm 사용 비활성화
-
-        browser = webdriver.Chrome(service=Service('/usr/bin/chromedriver'), options=options)
-
-        comment_scrap_stocktwits.select_court(browser, symbol) 
-        return comment_scrap_stocktwits.get_data(browser, symbol)
-    
+        # 운영체제 확인
+        current_os = platform.system().lower()
+        
+        if current_os == 'linux':
+            # Linux 환경 설정
+            options.add_argument("--headless")
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            browser = webdriver.Chrome(service=Service('/usr/bin/chromedriver'), options=options)
+        else:
+            # Windows 또는 다른 환경 설정
+            webdriver_manager_directory = ChromeDriverManager().install()
+            browser = webdriver.Chrome(service=Service(webdriver_manager_directory), options=options)
+        
+        return browser
 
     def run_stocktwits_scrap_list(symbol_list) -> pd.DataFrame:
 
-        # options = Options()
-        # options.add_argument("--headless")  # GUI 없이 실행
-        # options.add_argument("--no-sandbox")  # 샌드박스 비활성화
-        # options.add_argument("--disable-dev-shm-usage")  # /dev/shm 사용 비활성화
-
-        # browser = webdriver.Chrome(service=Service('/usr/bin/chromedriver'), options=options)
+        # # options = Options()
+        # # options.add_argument("--headless")  # GUI 없이 실행
+        # # options.add_argument("--no-sandbox")  # 샌드박스 비활성화
+        # # options.add_argument("--disable-dev-shm-usage")  # /dev/shm 사용 비활성화
+        # # browser = webdriver.Chrome(service=Service('/usr/bin/chromedriver'), options=options)
         
-        # selenium
-        webdriver_manager_directory = ChromeDriverManager().install() # 딱 한번 수행이라 밖에
-        # ChromeDriver 실행
-        browser = webdriver.Chrome(service=Service(webdriver_manager_directory))
+        # webdriver_manager_directory = ChromeDriverManager().install() # 딱 한번 수행이라 밖에
+        # browser = webdriver.Chrome(service=Service(webdriver_manager_directory))
+        browser = comment_scrap_stocktwits.get_browser()
+
         # 결과를 저장할 데이터프레임 리스트
         df_list = []
         
         for symbol in symbol_list:
             try:
-                comment_scrap_stocktwits.select_court(browser, symbol)
+                comment_scrap_stocktwits.scroll_down_and_login(browser, symbol)
                 df = comment_scrap_stocktwits.get_data(browser, symbol)
                 df_list.append(df)
             except Exception as e:
@@ -266,11 +274,6 @@ class comment_scrap_stocktwits :
     
 
 if __name__ == '__main__':
-    # # selenium
-    # webdriver_manager_directory = ChromeDriverManager().install() # 딱 한번 수행이라 밖에
-    # # ChromeDriver 실행
-    # browser = webdriver.Chrome(service=Service(webdriver_manager_directory))
-    # # try - finally 자원 관리 필요 
 
     # need symbol list version 
     symbol = 'AAPL'
@@ -278,8 +281,15 @@ if __name__ == '__main__':
     symbol = 'MSFT'
     symbol = ['AAPL','NVDA','MSFT','GOOGL','CSCO']
     try:
-        # case_data = iframe_test.run(browser, symbol)
+        # 시작 시간 기록
+        start_time = time.time()
+    
         case_data = comment_scrap_stocktwits.run_stocktwits_scrap_list(symbol)
+
+        # 실행 시간 계산
+        elapsed_time = time.time() - start_time
+        print(f"Execution time: {elapsed_time:.2f} seconds") 
+
         print(case_data)
     except Exception as e :
         print(e)
