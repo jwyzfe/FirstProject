@@ -16,14 +16,14 @@ class connect_mongo:
         if isinstance(input_list, pd.DataFrame):
             records = input_list.to_dict(orient='records')
             for record in records:
-                record['created_at'] = current_time  # 입력 시점 추가
+                record['CREATED_AT'] = current_time  # 입력 시점 추가
             results = collection.insert_many(records)
         elif isinstance(input_list, list):
             for record in input_list:
-                record['created_at'] = current_time  # 입력 시점 추가
+                record['CREATED_AT'] = current_time  # 입력 시점 추가
             results = collection.insert_many(input_list)
         elif isinstance(input_list, dict):
-            input_list['created_at'] = current_time  # 입력 시점 추가
+            input_list['CREATED_AT'] = current_time  # 입력 시점 추가
             results = collection.insert_one(input_list)
         else:
             print("insert_recode_in_mongo: type error")
