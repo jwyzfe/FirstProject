@@ -55,12 +55,18 @@ class connect_mongo:
 
         # 데이터 입력
         if isinstance(input_list, pd.DataFrame):
+            # DataFrame의 컬럼명을 대문자로 변환
+            input_list.columns = input_list.columns.str.upper()
             records = input_list.to_dict(orient='records')
             results = collection.insert_many(records)
         elif isinstance(input_list, list):
-            results = collection.insert_many(input_list)
+            # 리스트 내의 각 딕셔너리의 키를 대문자로 변환
+            uppercase_list = [connect_mongo.convert_keys_to_uppercase(record) for record in input_list]
+            results = collection.insert_many(uppercase_list)
         elif isinstance(input_list, dict):
-            results = collection.insert_one(input_list)
+            # 딕셔너리의 키를 대문자로 변환
+            uppercase_dict = connect_mongo.convert_keys_to_uppercase(input_list)
+            results = collection.insert_one(uppercase_dict)
         else:
             print("insert_recode_in_mongo: type error")
             return None
