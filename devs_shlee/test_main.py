@@ -191,7 +191,7 @@ def run():
             "args": "symbol", 
             "target": 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY', 
             "work": "COL_STOCKTWITS_COMMENT_DAILY_WORK",
-            "schedule": "test_5s"
+            "schedule": "comment_5m"
         }
         # {
         #     "func": yahoo_finance_scrap.scrape_news_schedule_version, 

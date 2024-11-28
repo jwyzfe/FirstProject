@@ -4,32 +4,46 @@ import pytz
 
 class connect_mongo:
 
+    @staticmethod
+    def convert_keys_to_uppercase(data):
+        if isinstance(data, dict):
+            return {k.upper(): connect_mongo.convert_keys_to_uppercase(v) if isinstance(v, (dict, list)) else v 
+                    for k, v in data.items()}
+        elif isinstance(data, list):
+            return [connect_mongo.convert_keys_to_uppercase(item) if isinstance(item, (dict, list)) else item 
+                    for item in data]
+        return data
+    
     def insert_recode_in_mongo(client, dbname, collectionname, input_list):
-        # 데이터베이스 선택
         db = client[dbname]  
         collection = db[collectionname]
+        current_time = datetime.now(pytz.timezone('Asia/Seoul'))
 
-        # 현재 시간 기록
-        current_time = datetime.now(pytz.timezone('Asia/Seoul')) # 왜 3시간 느리지 mac이라서? 
-
-        # 데이터 입력
         if isinstance(input_list, pd.DataFrame):
+            # DataFrame의 컬럼명을 대문자로 변환
+            input_list.columns = input_list.columns.str.upper()
             records = input_list.to_dict(orient='records')
             for record in records:
-                record['CREATED_AT'] = current_time  # 입력 시점 추가
+                record['CREATED_AT'] = current_time
             results = collection.insert_many(records)
+        
         elif isinstance(input_list, list):
-            for record in input_list:
-                record['CREATED_AT'] = current_time  # 입력 시점 추가
-            results = collection.insert_many(input_list)
+            # 리스트 내의 각 딕셔너리의 키를 대문자로 변환
+            uppercase_list = [connect_mongo.convert_keys_to_uppercase(record) for record in input_list]
+            for record in uppercase_list:
+                record['CREATED_AT'] = current_time
+            results = collection.insert_many(uppercase_list)
+        
         elif isinstance(input_list, dict):
-            input_list['CREATED_AT'] = current_time  # 입력 시점 추가
-            results = collection.insert_one(input_list)
+            # 딕셔너리의 키를 대문자로 변환
+            uppercase_dict = connect_mongo.convert_keys_to_uppercase(input_list)
+            uppercase_dict['CREATED_AT'] = current_time
+            results = collection.insert_one(uppercase_dict)
+        
         else:
             print("insert_recode_in_mongo: type error")
             return None
         
-
         return results
     
     def insert_recode_in_mongo_notime(client, dbname, collectionname, input_list):
