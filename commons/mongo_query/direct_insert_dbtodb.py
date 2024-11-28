@@ -29,12 +29,12 @@ def transfer_collection(source_host, source_port, source_db, source_collection,
 source_host = '192.168.0.50'  # A 컴퓨터의 IP 주소
 source_port = 27017             # A 컴퓨터의 MongoDB 포트
 source_db = 'DB_SGMN'              # A 컴퓨터의 데이터베이스 이름
-source_collection = 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY'  # A 컴퓨터의 컬렉션 이름  # 25000000 record 옮기는데 약 7시간 소요 => 배치로 돌리게 수정 해야 해. 아니면 걍 싹 다 새거로 받던가
+source_collection = 'COL_STOCKPRICE_DAILY'  # A 컴퓨터의 컬렉션 이름  # 25000000 record 옮기는데 약 7시간 소요 => 배치로 돌리게 수정 해야 해. 아니면 걍 싹 다 새거로 받던가
 
-dest_host = '192.168.0.50'     # B 컴퓨터의 IP 주소
+dest_host = '192.168.0.91'     # B 컴퓨터의 IP 주소
 dest_port = 27017               # B 컴퓨터의 MongoDB 포트
 dest_db = 'DB_SGMN'                # B 컴퓨터의 데이터베이스 이름
-dest_collection = 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY_BACKUP'  # B 컴퓨터의 컬렉션 이름
+dest_collection = 'COL_STOCKPRICE_DAILY'  # B 컴퓨터의 컬렉션 이름
 
 # 컬렉션 전송
 transfer_collection(source_host, source_port, source_db, source_collection,

@@ -4,9 +4,9 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # 직접 만든 class    
-from commons.config_reader import read_config # config read 용       
-from commons.mongo_insert_recode import connect_mongo as connect_mongo_insert
-from commons.mongo_find_recode import connect_mongo as connect_mongo_find
+# from commons.config_reader import read_config # config read 용       
+from mongo_insert_recode import connect_mongo as connect_mongo_insert
+from mongo_find_recode import connect_mongo as connect_mongo_find
 
 # mongo DB
 from pymongo import MongoClient
@@ -28,9 +28,9 @@ def make_direct_insert_work_recode(company_dict):
             corp_num_clean = corp_num.replace('-', '')
             
             work_record = {
-                'corp_regist_num': corp_num_clean,
-                # 'company_name': company_name,  # 회사명도 저장
-                'iswork': 'ready'
+                'CORP_REGIST_NUM': corp_num_clean, # corp_regist_num
+                'COMPANY_NAME': company_name,  # 회사명도 저장
+                # 'iswork': 'ready'
             }
             work_records.append(work_record)
     
@@ -38,16 +38,16 @@ def make_direct_insert_work_recode(company_dict):
     
 
 if __name__ == '__main__':
-    config = read_config()
-    ip_add = f'mongodb://192.168.0.48:27017/'
+    # config = read_config()
+    ip_add = f'mongodb://192.168.0.50:27017/'
     mongo_client = MongoClient(ip_add)
 
     db_name = 'DB_SGMN'
-    col_name_work = 'COL_FINANCIAL_WORK'
+    col_name_work = 'COL_FINANCIAL_CORPLIST'
 
     # JSON 파일 경로 설정
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    json_file_path = os.path.join(current_dir, 'companyList.json')
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    json_file_path = os.path.join(project_root, 'companyList.json')
 
     try:
         # JSON 파일 읽기

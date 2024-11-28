@@ -82,6 +82,32 @@ def register_job_with_mongo(client, ip_add, db_name, col_name_work, col_name_des
 
     return 
 
+
+def update_job_status(client, db_name, col_name_work, symbols_batch, status, insert_data):
+    """
+    처리된 symbol에 대한 상태 업데이트를 수행하는 함수
+
+    :param client: MongoDB 클라이언트
+    :param db_name: 데이터베이스 이름
+    :param col_name_work: 작업 컬렉션 이름
+    :param symbols_batch: 상태를 업데이트할 symbol의 배치
+    :param status: 업데이트할 상태 ('fin' 또는 'working')
+    :param insert_data: 업데이트할 추가 데이터 필드
+    """
+    update_data_list = []
+    for _, row in symbols_batch.iterrows():
+        update_data = {
+            'ref_id': row['_id'],  # 원본 레코드의 ID를 참조 ID로 저장
+            'iswork': status,  # 상태 업데이트
+            insert_data: row[insert_data]
+        }
+        update_data_list.append(update_data)
+
+    # 배치 업데이트
+    result_list = connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name_work, update_data_list)
+    return result_list
+
+
 # common 에 넣을 예정
 def register_job_with_mongo_cron(client, ip_add, db_name, col_name_work, col_name_dest, func, insert_data):
     try:
@@ -104,6 +130,7 @@ def register_job_with_mongo_cron(client, ip_add, db_name, col_name_work, col_nam
                 print("zero record. skip schedule")
                 return
             
+            ## 파라미터 처리 해야 되는 부분 
             # 20개씩 제한
             BATCH_SIZE = 1
             symbols_batch = symbols.head(BATCH_SIZE)  # 처음 20개만 선택
@@ -111,23 +138,28 @@ def register_job_with_mongo_cron(client, ip_add, db_name, col_name_work, col_nam
             # symbol 컬럼만 리스트로 변환
             symbol_list = symbols_batch[insert_data].tolist()
 
+            result_list = update_job_status(client, db_name, col_name_work, symbols_batch, 'working', insert_data)
+
             # 선택된 symbol 처리
             result_data = func(symbol_list)
+
             print("fin : func")
             result_list = connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name_dest, result_data)
             print("fin : insert data ")
         
-            # 처리된 20개의 symbol에 대해서만 상태 업데이트
-            update_data_list = []
-            for _, row in symbols_batch.iterrows():
-                update_data = {
-                    'ref_id': row['_id'],  # 원본 레코드의 ID를 참조 ID로 저장
-                    'iswork': 'fin',
-                    insert_data: row[insert_data]
-                }
-                update_data_list.append(update_data)
+            result_list = update_job_status(client, db_name, col_name_work, symbols_batch, 'fin', insert_data)
+            
+            # # 처리된 20개의 symbol에 대해서만 상태 업데이트
+            # update_data_list = []
+            # for _, row in symbols_batch.iterrows():
+            #     update_data = {
+            #         'ref_id': row['_id'],  # 원본 레코드의 ID를 참조 ID로 저장
+            #         'iswork': 'fin',
+            #         insert_data: row[insert_data]
+            #     }
+            #     update_data_list.append(update_data)
 
-            result_list = connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name_work, update_data_list)
+            # result_list = connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name_work, update_data_list)
 
     except Exception as e:
         print(e)
@@ -161,6 +193,19 @@ def run():
     work : 일 시킬 내용 들어있는 데이터 베이스 컬렉션 이름
 
     '''
+    '''
+    함수별 필요 파라미터를 생각해보자
+    symbol 인데 어떤 심볼인지 market 코드 붙은 건지 안붙은 건지 고를 수 있어야 함.
+    batch 사이즈도 달라져야함. 각 스케쥴 마다 소요시간이 다르기 때문
+    input db랑 target db를 알아야함.
+    non 파라미터 경우 ? 
+    시간을 받아서 처리해야 하는 경우도 있음. 
+    
+    각 work에 일감 등록 하게 할 것? 
+    daily는 각 daily db 찾아서 자체 중복 제거 하고 target에 넣은 후에 또 중복 제거? 
+
+    
+    '''
     # 스케줄 설정을 위한 딕셔너리
     SCHEDULE_CONFIGS = {
         'news_5h': {
@@ -191,7 +236,7 @@ def run():
             "args": "symbol", 
             "target": 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY', 
             "work": "COL_STOCKTWITS_COMMENT_DAILY_WORK",
-            "schedule": "comment_5m"
+            "schedule": "test_5s"
         }
         # {
         #     "func": yahoo_finance_scrap.scrape_news_schedule_version, 
