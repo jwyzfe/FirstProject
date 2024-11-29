@@ -28,6 +28,21 @@ work_collections = [name for name in collections if name.endswith('WORK')]
 print("DAILY Collections:", daily_collections)
 print("WORK Collections:", work_collections)
 
+
+'''
+    작업을 등록하려면? 
+    daily 먹이 여야함. 
+    history는 굳이 생각 안해도 됨. 그냥 필요한 만큼 넣으면 되서.
+
+    yfinance symbol, 6num.ks, COL_NAS25_KOSPI25_CORPLIST, COL_STOCKPRICE_DAILY_WORK
+    tosscomment symbol, 6num, COL_NAS25_KOSPI25_CORPLIST, COL_SCRAPPING_TOSS_COMMENT_DAILY_WORK
+    stocktwits symbol, COL_NAS25_KOSPI25_CORPLIST, COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY_WORK
+    marketsenti symbol, COL_NAS25_KOSPI25_CORPLIST, COL_MARKETSENTI_DAILY_WORK
+    yahoofinance none 
+    hankyung url making, url, page_list=['economy', 'financial-market', 'industry', 'politics', 'society', 'international'], f'https://www.hankyung.com/{classification}?page={page_num}', 1~500, COL_SCRAPPING_HANKYUNG_DAILY_WORK
+    financestate registcode, COL_FINANCIAL_CORPLIST, COL_FINANCIAL_DAILY_WORK
+'''
+
 '''
 순서
 1. 리스트 받아오고 
@@ -64,7 +79,5 @@ making은 일단 됨.
 3. 일단 working 3번 돈 애들은 ready working *3 쌍을 따로 빼두자 다른 로거 db 만들어서 
 차라리 error 나면 그 ready id를 다른 db에 넣으면 되네 그럼 컬렉션만 바꼇지 관리는 똑같은거 아님?  
 그냥 실행여부와 error 여부는 그냥 아얘 다른애가 관리해야 하는 듯? 
-
-
 
 '''
