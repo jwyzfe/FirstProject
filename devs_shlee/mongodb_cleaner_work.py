@@ -5,18 +5,7 @@ from pymongo import MongoClient, ASCENDING
 from pymongo.collection import Collection
 from pymongo.database import Database
 
-class JobProducer:
-    """작업을 생성하고 등록하는 Producer 클래스"""
-    
-    def __init__(self, db: Database):
-        self.db = db
-
-    def get_work_collections(self) -> List[str]:
-        """WORK로 끝나는 컬렉션 목록 조회"""
-        collections = self.db.list_collection_names()
-        return [name for name in collections if name.endswith('WORK')]
-
-    '''
+'''
     작업을 등록하려면? 
     daily 먹이 여야함. 
     history는 굳이 생각 안해도 됨. 그냥 필요한 만큼 넣으면 되서.
@@ -30,42 +19,7 @@ class JobProducer:
     financestate registcode, COL_FINANCIAL_CORPLIST, COL_FINANCIAL_DAILY_WORK
 
     '''
-    def register_job(self, collection_name: str, job_data: Dict[str, Any]) -> bool:
-        """새로운 작업 등록"""
-        try:
-            collection = self.db[collection_name]
-            
-            # 중복 검사
-            query = {
-                '$and': [
-                    {'state': 'ready'},
-                    {'$or': [
-                        {'symbol': job_data.get('symbol')} if 'symbol' in job_data else {},
-                        {'url': job_data.get('url')} if 'url' in job_data else {}
-                    ]}
-                ]
-            }
-            
-            if collection.find_one(query):
-                print(f"Duplicate job found in {collection_name}: {job_data}")
-                return False
 
-            # 작업 등록
-            current_time = datetime.now(pytz.UTC)
-            job_document = {
-                **job_data,
-                'state': 'ready',
-                'created_at': current_time,
-                #'updated_at': current_time,
-                #'attempts': 0
-            }
-
-            collection.insert_one(job_document)
-            return True
-
-        except Exception as e:
-            print(f"Error registering job: {e}")
-            return False
 
 class QueueManager:
     """작업 큐를 관리하는 Manager 클래스"""
