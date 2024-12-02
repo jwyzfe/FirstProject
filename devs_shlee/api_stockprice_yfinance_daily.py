@@ -252,20 +252,22 @@ def test_yfinance_func():
     
     # 새로운 레코드로 삽입
     connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name, pd.DataFrame(update_data_list))
-
+    
     pass
 
-if __name__ == '__main__':
+test_yfinance_func()
+    
+# if __name__ == '__main__':
 
-    # small_test_yfinance_func()
-    # corp_list = ['010950.ks']
-    # api_stockprice_yfinance.get_stockprice_yfinance(corp_list)
-    # working_api_yfinance_stockpricing()
+#     # small_test_yfinance_func()
+#     # corp_list = ['010950.ks']
+#     # api_stockprice_yfinance.get_stockprice_yfinance(corp_list)
+#     # working_api_yfinance_stockpricing()
 
-    symbols = ["NVDA", "AAPL", "MSFT", "INVALID_SYMBOL", "AMZN", "META", "AVGO", "GOOGL", "TSLA", "GOOG", "BRK.B", '005930.KS', "010950.ks"]
-    # 심볼 리스트 (유효하지 않은 심볼 포함)
-    # symbols = ['AAPL', 'MSFT', 'INVALID_SYMBOL', 'GOOGL']
-    # symbols = ["NVDA"]
-    df_testprint = api_stockprice_yfinance.get_stockprice_yfinance_daily(symbols)
-    print(df_testprint)
-    pass
+#     symbols = ["NVDA", "AAPL", "MSFT", "INVALID_SYMBOL", "AMZN", "META", "AVGO", "GOOGL", "TSLA", "GOOG", "BRK.B", '005930.KS', "010950.ks"]
+#     # 심볼 리스트 (유효하지 않은 심볼 포함)
+#     # symbols = ['AAPL', 'MSFT', 'INVALID_SYMBOL', 'GOOGL']
+#     # symbols = ["NVDA"]
+#     df_testprint = api_stockprice_yfinance.get_stockprice_yfinance_daily(symbols)
+#     print(df_testprint)
+#     pass
