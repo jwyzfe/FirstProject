@@ -35,6 +35,10 @@ from devs_oz.news_scrapping_yahoo_headless import yahoo_finance_scrap
 from devs_jihunshim.bs4_news_hankyung import bs4_scrapping
 from devs_jiho.dartApi import CompanyFinancials
 from devs_jiho.ongoing_updateDailyTossComments import scrap_toss_comment
+from devs_shlee.mongodb_producer import JobProducer
+from devs_shlee.mongodb_queuemanager import QueueManager
+from devs_shlee.mongodb_dailytohistory import ResourceConsumer
+
 
 # common 에 넣을 예정
 def register_job_with_mongo(client, ip_add, db_name, col_name_work, col_name_dest, func, insert_data):
@@ -204,99 +208,179 @@ def run():
     각 work에 일감 등록 하게 할 것? 
     daily는 각 daily db 찾아서 자체 중복 제거 하고 target에 넣은 후에 또 중복 제거? 
 
-    
     '''
-    # 스케줄 설정을 위한 딕셔너리
-    SCHEDULE_CONFIGS = {
-        'news_5h': {
-            'trigger': 'interval',
-            'hours': 5,
+    # 추후 로거 필요하다면 wrapping 해야함
+    # 작업 유형별 설정
+    JOB_CONFIGS = {
+        'yfinance': {
+            'source_collection': 'corp_list',
+            'params': ['symbol'],
+            'batch_size': 20,
+            'symbol_key': 'SYMBOL'
         },
-        'comment_1h': {
-            'trigger': 'interval',
-            'hours': 1,
+        'toss': {
+            'source_collection': 'corp_list',
+            'params': ['symbol'],
+            'batch_size': 5,
+            'symbol_key': lambda corp: corp['SYMBOL_KS'] if corp['MARKET'] == 'kospi' else corp['SYMBOL'],
+            'market_filter': None
         },
-        'comment_30m': {
-            'trigger': 'interval',
-            'minutes': 30,
+        'stocktwits': {
+            'source_collection': 'corp_list',
+            'params': ['symbol'],
+            'batch_size': 1,
+            'symbol_key': 'SYMBOL',
+            'market_filter': lambda corp: corp['MARKET'] == 'nasdaq'
         },
-        'comment_5m': {
-            'trigger': 'interval',
-            'minutes': 5,
+        'yahoofinance': {
+            'params': [],
+            'batch_size': 1,
+            'count': 10
         },
-        'test_5s': {
-            'trigger': 'interval',
-            'seconds': 5,
+        'hankyung': {
+            'params': ['url'],
+            'batch_size': 500,
+            'categories': ['economy', 'financial-market', 'industry', 
+                         'politics', 'society', 'international'],
+            'url_pattern': 'https://www.hankyung.com/{category}?page={page}'
+        },
+        'financial': {
+            'source_collection': 'financial_corp',
+            'params': ['registcode'],
+            'batch_size': 10,
+            'registcode_key': 'CORP_REGIST_NUM'
         }
     }
 
-    func_list = [
-            {
-            "func": comment_scrap_stocktwits.run_stocktwits_scrap_list, 
-            "args": "symbol", 
-            "target": 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY', 
-            "work": "COL_STOCKTWITS_COMMENT_DAILY_WORK",
-            "schedule": "test_5s"
-        }
-        # {
-        #     "func": yahoo_finance_scrap.scrape_news_schedule_version, 
-        #     "args": "symbol", 
-        #     "target": 'COL_SCRAPPING_NEWS_YAHOO_DAILY', 
-        #     "work": "",
-        #     "schedule": "news_5h"
-        # },
-        # {
-        #     "func": scrap_toss_comment.run_toss_comments, 
-        #     "args": "symbol", 
-        #     "target": 'COL_SCRAPPING_TOSS_COMMENT_DAILY', 
-        #     "work": "COL_TOSS_COMMENT_DAILY_WORK",
-        #     "schedule": "comment_1h"
-        # },
-        # {
-        #     "func": comment_scrap_stocktwits.run_stocktwits_scrap_list, 
-        #     "args": "symbol", 
-        #     "target": 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY', 
-        #     "work": "COL_STOCKTWITS_COMMENT_DAILY_WORK",
-        #     "schedule": "comment_30m"
-        # },
-        # { 
-        #     "func": api_stockprice_yfinance.get_stockprice_yfinance_daily, 
-        #     "args": "symbol", 
-        #     "target": 'COL_STOCKPRICE_DAILY', 
-        #     "work": "COL_STOCKPRICE_DAILY_WORK",
-        #     "schedule": "comment_30m"
-        # }
-    ]
+    collections = {
+        'corp_list': 'COL_NAS25_KOSPI25_CORPLIST',
+        'financial_corp': 'COL_FINANCIAL_CORPLIST',
+        'yfinance': 'COL_STOCKPRICE_DAILY_WORK',
+        'toss': 'COL_SCRAPPING_TOSS_COMMENT_DAILY_WORK',
+        'stocktwits': 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY_WORK',
+        'yahoofinance': 'COL_YAHOOFINANCE_DAILY_WORK',
+        'hankyung': 'COL_SCRAPPING_HANKYUNG_DAILY_WORK',
+        'financial': 'COL_FINANCIAL_DAILY_WORK'
+    }
+    
+    client_source = MongoClient('mongodb://192.168.0.50:27017/')
+    source_db = client_source['DB_SGMN']
 
-    for func in func_list:
-        schedule_config = SCHEDULE_CONFIGS[func['schedule']]
+    client_target = MongoClient('mongodb://192.168.0.91:27017/')
+    target_db = client_target['DB_TEST']
+
+    scheduler.add_job(JobProducer.register_all_daily_jobs, 
+                      'interval', 
+                      seconds=5, 
+                      id='register_all_daily_jobs', 
+                      max_instances=1, 
+                      coalesce=True, 
+                      args=[source_db,target_db,collections,JOB_CONFIGS,client_target]
+                      )
+    
+    client = MongoClient('mongodb://192.168.0.91:27017/')
+    db = client['DB_TEST']
+    days = 7
+    scheduler.add_job(QueueManager.cleanup_work_collections, 
+                      'interval', 
+                      seconds=5, 
+                      id='register_all_daily_jobs', 
+                      max_instances=1, 
+                      coalesce=True, 
+                      args=[db, days]
+                      )
+
+    # # 스케줄 설정을 위한 딕셔너리
+    # SCHEDULE_CONFIGS = {
+    #     'news_5h': {
+    #         'trigger': 'interval',
+    #         'hours': 5,
+    #     },
+    #     'comment_1h': {
+    #         'trigger': 'interval',
+    #         'hours': 1,
+    #     },
+    #     'comment_30m': {
+    #         'trigger': 'interval',
+    #         'minutes': 30,
+    #     },
+    #     'comment_5m': {
+    #         'trigger': 'interval',
+    #         'minutes': 5,
+    #     },
+    #     'test_5s': {
+    #         'trigger': 'interval',
+    #         'seconds': 5,
+    #     }
+    # }
+
+    # func_list = [
+    #         {
+    #         "func": comment_scrap_stocktwits.run_stocktwits_scrap_list, 
+    #         "args": "symbol", 
+    #         "target": 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY', 
+    #         "work": "COL_STOCKTWITS_COMMENT_DAILY_WORK",
+    #         "schedule": "test_5s"
+    #     }
+    #     # {
+    #     #     "func": yahoo_finance_scrap.scrape_news_schedule_version, 
+    #     #     "args": "symbol", 
+    #     #     "target": 'COL_SCRAPPING_NEWS_YAHOO_DAILY', 
+    #     #     "work": "",
+    #     #     "schedule": "news_5h"
+    #     # },
+    #     # {
+    #     #     "func": scrap_toss_comment.run_toss_comments, 
+    #     #     "args": "symbol", 
+    #     #     "target": 'COL_SCRAPPING_TOSS_COMMENT_DAILY', 
+    #     #     "work": "COL_TOSS_COMMENT_DAILY_WORK",
+    #     #     "schedule": "comment_1h"
+    #     # },
+    #     # {
+    #     #     "func": comment_scrap_stocktwits.run_stocktwits_scrap_list, 
+    #     #     "args": "symbol", 
+    #     #     "target": 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY', 
+    #     #     "work": "COL_STOCKTWITS_COMMENT_DAILY_WORK",
+    #     #     "schedule": "comment_30m"
+    #     # },
+    #     # { 
+    #     #     "func": api_stockprice_yfinance.get_stockprice_yfinance_daily, 
+    #     #     "args": "symbol", 
+    #     #     "target": 'COL_STOCKPRICE_DAILY', 
+    #     #     "work": "COL_STOCKPRICE_DAILY_WORK",
+    #     #     "schedule": "comment_30m"
+    #     # }
+    # ]
+
+    # for func in func_list:
+    #     schedule_config = SCHEDULE_CONFIGS[func['schedule']]
         
-        scheduler.add_job(
-            register_job_with_mongo_cron,                         
-            trigger=schedule_config['trigger'],
-            coalesce=True, 
-            max_instances=1,
-            id=func['func'].__name__,
-            args=[client, ip_add, db_name, func['work'], func['target'], func['func'], func['args']],
-            **{k: v for k, v in schedule_config.items() if k != 'trigger'}
-        )
-        '''
-        scheduler.add_job(
-                    register_job_with_mongo_cron,                         
-                    trigger='cron',  # 크론 트리거 사용
-                    second='0',      # 매 분의 0초에 실행
-                    minute='*',      # 매 분마다 실행
-                    hour='*',        # 매 시간마다 실행
-                    day='*',         # 매일 실행
-                    month='*',       # 매월 실행
-                    day_of_week='*', # 매주 실행
-                    coalesce=True, 
-                    max_instances=1,
-                    id=func['func'].__name__,  # 독립적인 함수 이름 주어야 함.
-                    args=[client, ip_add, db_name, func['work'], func['target'], func['func'], func['args']]
-                )
+    #     scheduler.add_job(
+    #         register_job_with_mongo_cron,                         
+    #         trigger=schedule_config['trigger'],
+    #         coalesce=True, 
+    #         max_instances=1,
+    #         id=func['func'].__name__,
+    #         args=[client, ip_add, db_name, func['work'], func['target'], func['func'], func['args']],
+    #         **{k: v for k, v in schedule_config.items() if k != 'trigger'}
+    #     )
+    #     '''
+    #     scheduler.add_job(
+    #                 register_job_with_mongo_cron,                         
+    #                 trigger='cron',  # 크론 트리거 사용
+    #                 second='0',      # 매 분의 0초에 실행
+    #                 minute='*',      # 매 분마다 실행
+    #                 hour='*',        # 매 시간마다 실행
+    #                 day='*',         # 매일 실행
+    #                 month='*',       # 매월 실행
+    #                 day_of_week='*', # 매주 실행
+    #                 coalesce=True, 
+    #                 max_instances=1,
+    #                 id=func['func'].__name__,  # 독립적인 함수 이름 주어야 함.
+    #                 args=[client, ip_add, db_name, func['work'], func['target'], func['func'], func['args']]
+    #             )
         
-        '''
+    #     '''
     
     
     scheduler.start()
