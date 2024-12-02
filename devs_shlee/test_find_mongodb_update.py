@@ -19,6 +19,10 @@ def migrate_to_timeseries_embedded(source_collection, target_collection, batch_s
             break
             
         documents = []
+        '''
+        임베디드 방식으로 바꿈 다른 db도 다 바꿔야해 특히 계속 데이터 들어오는 것들 daily도 다 맞추어야함. 
+        
+        '''
         for doc in batch:
             try:
                 # _id 저장 후 제거
@@ -29,20 +33,24 @@ def migrate_to_timeseries_embedded(source_collection, target_collection, batch_s
                 if 'STOCK SPLITS' in doc:
                     doc['STOCKSPLITS'] = doc.pop('STOCK SPLITS')
                 
-                price_data = {
-                    "OPEN": doc["OPEN"],
-                    "HIGH": doc["HIGH"],
-                    "LOW": doc["LOW"],
-                    "CLOSE": doc["CLOSE"],
-                    "VOLUME": doc["VOLUME"],
-                    "STOCKSPLITS": doc.get("STOCKSPLITS", 0),
-                    "DIVIDENDS": doc.get("DIVIDENDS", 0)
+                # 시간 데이터를 임베디드 문서로 구성
+                time_data = {
+                    "DATE": doc["DATE"],
+                    "price_data": {
+                        "OPEN": doc["OPEN"],
+                        "HIGH": doc["HIGH"],
+                        "LOW": doc["LOW"],
+                        "CLOSE": doc["CLOSE"],
+                        "VOLUME": doc["VOLUME"],
+                        "STOCKSPLITS": doc.get("STOCKSPLITS", 0),
+                        "DIVIDENDS": doc.get("DIVIDENDS", 0)
+                    }
                 }
                 
+                # SYMBOL을 최상위로
                 new_doc = {
                     "SYMBOL": doc["SYMBOL"],
-                    "DATE": doc["DATE"],
-                    "price_data": price_data,
+                    "time_data": time_data,
                     "CREATED_AT": doc.get("CREATED_AT", datetime.utcnow())
                 }
                 
@@ -66,37 +74,24 @@ if __name__ == "__main__":
     # 타임시리즈 컬렉션 생성
     try:
         # 기존 컬렉션이 있다면 삭제
-        if "COL_STOCKPRICE_TIMESERIES_EMBEDDED" in db.list_collection_names():
+        if "COL_STOCKPRICE_EMBEDDED" in db.list_collection_names():
             print("Dropping existing collection and its buckets...")
-            db.drop_collection("COL_STOCKPRICE_TIMESERIES_EMBEDDED")
+            db.drop_collection("COL_STOCKPRICE_EMBEDDED")
             
-            # 버킷이 모두 삭제되었는지 확인
-            system_buckets = db.list_collection_names(filter={"name": {"$regex": "^system.buckets"}})
-            if any("COL_STOCKPRICE_TIMESERIES_EMBEDDED" in bucket for bucket in system_buckets):
-                print("Warning: Some buckets might still exist")
-            else:
-                print("All buckets successfully removed")
-
-        db.create_collection(
-            "COL_STOCKPRICE_TIMESERIES_EMBEDDED",
-            timeseries = {
-                "timeField": "DATE",        # 시간 필드
-                "metaField": "SYMBOL",      # 메타데이터 필드
-                "granularity": "minutes"    # 시간 단위
-            }
-        )
+        db.create_collection("COL_STOCKPRICE_EMBEDDED")
         print("Created new timeseries collection")
     except Exception as e:
         print(f"Collection already exists or error occurred: {e}")
 
     # 컬렉션 설정
     source_collection = db['COL_STOCKPRICE_HISTORY']
-    target_collection = db['COL_STOCKPRICE_TIMESERIES_EMBEDDED']
+    target_collection = db['COL_STOCKPRICE_EMBEDDED']
 
     # 인덱스 생성
+    # SYMBOL에 대한 인덱스 생성
     target_collection.create_index([("SYMBOL", 1)])
-    target_collection.create_index([("DATE", 1)])
-    # target_collection.create_index([("SYMBOL", 1), ("DATE", 1)], unique=True)
+    # 복합 인덱스 생성
+    target_collection.create_index([("SYMBOL", 1), ("time_data.DATE", 1)])
 
     # 데이터 마이그레이션 실행
     migrate_to_timeseries_embedded(source_collection, target_collection)
