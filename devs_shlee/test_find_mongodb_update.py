@@ -65,6 +65,18 @@ if __name__ == "__main__":
 
     # 타임시리즈 컬렉션 생성
     try:
+        # 기존 컬렉션이 있다면 삭제
+        if "COL_STOCKPRICE_TIMESERIES_EMBEDDED" in db.list_collection_names():
+            print("Dropping existing collection and its buckets...")
+            db.drop_collection("COL_STOCKPRICE_TIMESERIES_EMBEDDED")
+            
+            # 버킷이 모두 삭제되었는지 확인
+            system_buckets = db.list_collection_names(filter={"name": {"$regex": "^system.buckets"}})
+            if any("COL_STOCKPRICE_TIMESERIES_EMBEDDED" in bucket for bucket in system_buckets):
+                print("Warning: Some buckets might still exist")
+            else:
+                print("All buckets successfully removed")
+
         db.create_collection(
             "COL_STOCKPRICE_TIMESERIES_EMBEDDED",
             timeseries = {
