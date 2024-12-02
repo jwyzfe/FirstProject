@@ -3,14 +3,14 @@ from datetime import datetime, timedelta
 
 
 def migrate_to_timeseries_embedded(source_collection, target_collection, batch_size=1000):
-    # _id로 정렬하여 순차적으로 처리
     last_id = None
+    total_migrated = 0
     
     while True:
-        # 쿼리 조건 설정
+        # 단순히 _id로만 쿼리
         query = {} if last_id is None else {'_id': {'$gt': last_id}}
         
-        # 배치 크기만큼 데이터 가져오기
+        # _id로만 정렬
         batch = list(source_collection.find(query)
                     .limit(batch_size)
                     .sort('_id', 1))
@@ -18,44 +18,44 @@ def migrate_to_timeseries_embedded(source_collection, target_collection, batch_s
         if not batch:
             break
             
-        # 데이터 변환 및 삽입
         documents = []
         for doc in batch:
-            # _id 필드 제외
-            doc.pop('_id', None)
-            
-            # STOCK SPLITS 필드 이름 변경
-            if 'STOCK SPLITS' in doc:
-                doc['STOCKSPLITS'] = doc.pop('STOCK SPLITS')
-            
-            # 임베디드 문서로 구성할 필드들
-            price_data = {
-                "OPEN": doc["OPEN"],
-                "HIGH": doc["HIGH"],
-                "LOW": doc["LOW"],
-                "CLOSE": doc["CLOSE"],
-                "VOLUME": doc["VOLUME"],
-                "STOCKSPLITS": doc.get("STOCKSPLITS", 0),  # 기본값 0
-                "DIVIDENDS": doc.get("DIVIDENDS", 0)       # 기본값 0
-            }
-            
-            # 새로운 문서 구조
-            new_doc = {
-                "SYMBOL": doc["SYMBOL"],
-                "DATE": doc["DATE"],          # 타임시리즈 필드
-                "price_data": price_data,     # 임베디드 문서
-                "CREATED_AT": doc.get("CREATED_AT", datetime.utcnow())
-            }
-            
-            documents.append(new_doc)
+            try:
+                # _id 저장 후 제거
+                last_id = doc['_id']
+                doc.pop('_id', None)
+                
+                # STOCK SPLITS 필드 이름 변경
+                if 'STOCK SPLITS' in doc:
+                    doc['STOCKSPLITS'] = doc.pop('STOCK SPLITS')
+                
+                price_data = {
+                    "OPEN": doc["OPEN"],
+                    "HIGH": doc["HIGH"],
+                    "LOW": doc["LOW"],
+                    "CLOSE": doc["CLOSE"],
+                    "VOLUME": doc["VOLUME"],
+                    "STOCKSPLITS": doc.get("STOCKSPLITS", 0),
+                    "DIVIDENDS": doc.get("DIVIDENDS", 0)
+                }
+                
+                new_doc = {
+                    "SYMBOL": doc["SYMBOL"],
+                    "DATE": doc["DATE"],
+                    "price_data": price_data,
+                    "CREATED_AT": doc.get("CREATED_AT", datetime.utcnow())
+                }
+                
+                documents.append(new_doc)
+                
+            except Exception as e:
+                print(f"Error processing document: {e}")
+                continue
         
-        # 배치 삽입
         if documents:
+            total_migrated += len(documents)
             target_collection.insert_many(documents)
-            print(f"Migrated {len(documents)} documents")
-        
-        # 마지막 _id 저장
-        last_id = batch[-1]['_id']
+            print(f"Migrated batch: {len(documents)}, Total: {total_migrated}")
 
 
 if __name__ == "__main__":
@@ -84,7 +84,7 @@ if __name__ == "__main__":
     # 인덱스 생성
     target_collection.create_index([("SYMBOL", 1)])
     target_collection.create_index([("DATE", 1)])
-    target_collection.create_index([("SYMBOL", 1), ("DATE", 1)], unique=True)
+    # target_collection.create_index([("SYMBOL", 1), ("DATE", 1)], unique=True)
 
     # 데이터 마이그레이션 실행
     migrate_to_timeseries_embedded(source_collection, target_collection)
