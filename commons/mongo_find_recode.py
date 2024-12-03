@@ -84,7 +84,7 @@ class connect_mongo:
             client, 
             db_name, 
             col_name, 
-            {"iswork": "fin"}
+            {"ISWORK": "fin"}
         )
         finished_ref_ids = [] if finished_records.empty else finished_records['ref_id'].tolist()
 
@@ -93,7 +93,7 @@ class connect_mongo:
             client, 
             db_name, 
             col_name, 
-            {"iswork": "ready"}
+            {"ISWORK": "ready"}
         )
         
         if not ready_records.empty:

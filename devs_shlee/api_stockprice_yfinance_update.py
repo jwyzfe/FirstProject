@@ -150,9 +150,9 @@ def test_yfinance_func():
         update_data_list = []
         for index, row in symbols.iterrows():
             update_data = {
-                'ref_id': row['_id'],
-                'iswork': 'fin',
-                'symbol': row['symbol']
+                'REF_ID': row['_id'],
+                'ISWORK': 'fin',
+                'SYMBOL': row['symbol']
             }
             update_data_list.append(update_data)
         

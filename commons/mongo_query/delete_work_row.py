@@ -12,7 +12,7 @@ collection = db[col_name]
 
 try:
     # Delete all documents where iswork is 'fin'
-    result = collection.delete_many({'iswork': 'fin'})
+    result = collection.delete_many({'ISWORK': 'fin'})
     print(f"Deleted {result.deleted_count} documents where iswork is 'fin'.")
 except Exception as e:
     print(f"Error occurred: {str(e)}")

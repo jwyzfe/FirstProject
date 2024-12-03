@@ -18,7 +18,7 @@ class QueueManager:
         collection = db[collection_name]
         
         # fin 상태의 작업 찾기
-        fin_jobs = collection.find({'STATE': 'fin'})
+        fin_jobs = collection.find({'ISWORK': 'fin'})
         
         for fin_job in fin_jobs:
             try:
@@ -39,7 +39,7 @@ class QueueManager:
         try:
             # 오래된 ready 작업 찾아서 삭제
             result = collection.delete_many({
-                'STATE': 'ready',
+                'ISWORK': 'ready',
                 'CREATED_AT': {'$lt': cutoff_date}
             })
             if result.deleted_count > 0:

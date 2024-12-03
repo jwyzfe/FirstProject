@@ -80,7 +80,7 @@ def run():
             client, 
             db_name, 
             col_name, 
-            {"iswork": "ready"}
+            {"ISWORK": "ready"}
         ) 
 
     while True:

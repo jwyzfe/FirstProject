@@ -44,7 +44,7 @@ class JobProducer:
     @staticmethod
     def register_job(target_db: Database, collection_name: str, job_data: Dict[str, Any], client: MongoClient):
         """단일 작업 등록 메서드"""
-        job_data['state'] = 'ready'
+        job_data['ISWORK'] = 'ready'
         connect_mongo.insert_recode_in_mongo(
             client=client,
             dbname=target_db.name,

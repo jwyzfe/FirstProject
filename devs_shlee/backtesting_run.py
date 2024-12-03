@@ -54,8 +54,8 @@ def register_job_with_mongo(client, ip_add, db_name, col_name_work, col_name_des
         update_data_list = []
         for _, row in symbols_batch.iterrows():
             update_data = {
-                'ref_id': row['_id'],  # 원본 레코드의 ID를 참조 ID로 저장
-                'iswork': 'fin',
+                'REF_ID': row['_id'],  # 원본 레코드의 ID를 참조 ID로 저장
+                'ISWORK': 'fin',
                 insert_data : row[insert_data]
             }
             update_data_list.append(update_data)
@@ -109,8 +109,8 @@ def register_job_with_mongo_cron(client, ip_add, db_name, col_name_work, col_nam
             update_data_list = []
             for _, row in symbols_batch.iterrows():
                 update_data = {
-                    'ref_id': row['_id'],  # 원본 레코드의 ID를 참조 ID로 저장
-                    'iswork': 'fin',
+                    'REF_ID': row['_id'],  # 원본 레코드의 ID를 참조 ID로 저장
+                    'ISWORK': 'fin',
                     insert_data: row[insert_data]
                 }
                 update_data_list.append(update_data)

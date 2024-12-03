@@ -244,9 +244,9 @@ def test_yfinance_func():
     update_data_list = []
     for index, row in symbols.iterrows():
         update_data = {
-            'ref_id': row['_id'],  # 원본 레코드의 ID를 참조 ID로 저장
-            'iswork': 'fin',
-            'symbol': row['symbol']
+            'REF_ID': row['_id'],  # 원본 레코드의 ID를 참조 ID로 저장
+            'ISWORK': 'fin',
+            'SYMBOL': row['symbol']
         }
         update_data_list.append(update_data)
     
