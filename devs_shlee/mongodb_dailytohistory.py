@@ -53,9 +53,12 @@ class ResourceConsumer:
     2. 번에서 예상 문제는 ? 없다 
     3. 번에서 예쌍 문제는? daily 중복으로 넣는 문제? 아니지 걍 drop 하면 되는데? 아니네 
     1. 번에서 값을 두번 넣는 다던가 해서 drop 이후에 중복으로 값이 생겼고 그게 다시 insert 되면 중복 생김 
-    
-    
-    얘는 아주 나중에 해도 됨. 그러면 이거는 어쩔 수 없이 상당히 느린 주기로 main db 중복을 제거하는 루틴이 있어야 겠다 
+    consumer 리스트 다시 정리 하고 
+    전체 동작 테스트 
+    이후 파라미터 db argument 화 하기 
+
+
+    얘는 아주 나중에 해도 됨. => 그러면 이거는 어쩔 수 없이 상당히 느린 주기로 main db 중복을 제거하는 루틴이 있어야 겠다 
 
     '''
 
@@ -177,26 +180,25 @@ class ResourceConsumer:
                                     client: MongoClient):
         """모든 일일 컬렉션 처리"""
         for daily_collection, resource_collection in collection_mapping.items():
-            if resource_collection == 'COL_STOCKPRICE_EMBEDDED':
-                client_stock = MongoClient('mongodb://192.168.0.50:27017/')
-                db_stock = client_stock["DB_SGMN"]
+            # if resource_collection == 'COL_STOCKPRICE_EMBEDDED':
+            #     client_stock = MongoClient('mongodb://192.168.0.50:27017/')
+            #     db_stock = client_stock["DB_SGMN"]
                 
-
-                ResourceConsumer.process_daily_collection(
-                    daily_db, 
-                    db_stock, 
-                    daily_collection, 
-                    resource_collection,
-                    client_stock
-                )
-            else :    
-                ResourceConsumer.process_daily_collection(
-                    daily_db, 
-                    resource_db, 
-                    daily_collection, 
-                    resource_collection,
-                    client
-                )
+            #     ResourceConsumer.process_daily_collection(
+            #         daily_db, 
+            #         db_stock, 
+            #         daily_collection, 
+            #         resource_collection,
+            #         client_stock
+            #     )
+            # else :    
+            ResourceConsumer.process_daily_collection(
+                daily_db, 
+                resource_db, 
+                daily_collection, 
+                resource_collection,
+                client
+            )
 
 if __name__ == "__main__":
     # 데이터베이스 연결

@@ -110,7 +110,7 @@ class api_stockprice_yfinance:
                                 'close': data[symbol]['Close'],
                                 'volume': data[symbol]['Volume'],
                                 'dividends': data[symbol]['Dividends'],  # 배당금 합계
-                                'stocksplits': data[symbol]['Stock Splits'],  # 주식 분할 합계
+                                'stocksplits': data[symbol]['StockSplits'],  # 주식 분할 합계
                                 'symbol': symbol
                             })
                             result_df = pd.concat([result_df, df_formatted], ignore_index=True)
@@ -130,7 +130,7 @@ class api_stockprice_yfinance:
                         'close': data['Close'],
                         'volume': data['Volume'],
                         'dividends': data['Dividends'],  # 배당금 합계
-                        'stocksplits': data['Stock Splits'],  # 주식 분할 합계
+                        'stocksplits': data['StockSplits'],  # 주식 분할 합계
                         'symbol': symbol_list[0] if isinstance(symbol_list, list) else symbol_list
                     })
                     result_df = pd.concat([result_df, df_formatted], ignore_index=True)

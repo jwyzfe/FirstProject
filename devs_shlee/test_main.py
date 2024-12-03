@@ -27,7 +27,7 @@ from commons.mongo_find_recode import connect_mongo as connect_mongo_find
 
 # 직접 구현한 부분을 import 해서 scheduler에 등록
 from devs.api_test_class import api_test_class
-from devs_shlee.api_stockprice_yfinance_daily import api_stockprice_yfinance 
+from devs_shlee.api_stockprice_yfinance_update import api_stockprice_yfinance 
 from devs_shlee.sel_comment_scrap_stocktwits import comment_scrap_stocktwits 
 # from devs_shlee.test_yahoo_scrap import yahoo_finance_scrap 
 from devs_oz.MarketSenti_yf import calc_market_senti
@@ -175,8 +175,8 @@ def register_job_with_mongo_cron(client, ip_add, db_name, col_name_work, col_nam
 def run():
 
     config = read_config()
-    ip_add = config['MongoDB_remote']['ip_add']
-    db_name = config['MongoDB_remote']['db_name']
+    ip_add = config['MongoDB_remote_readonly']['ip_add']
+    db_name = config['MongoDB_remote_readonly']['db_name']
     col_name = f'COL_STOCKPRICE_WORK' # 데이터 읽을 collection
 
     # MongoDB 서버에 연결 
@@ -204,10 +204,6 @@ def run():
     input db랑 target db를 알아야함.
     non 파라미터 경우 ? 
     시간을 받아서 처리해야 하는 경우도 있음. 
-    
-    각 work에 일감 등록 하게 할 것? 
-    daily는 각 daily db 찾아서 자체 중복 제거 하고 target에 넣은 후에 또 중복 제거? 
-
     '''
     # 추후 로거 필요하다면 wrapping 해야함
     # 작업 유형별 설정
@@ -232,14 +228,14 @@ def run():
             'symbol_key': 'SYMBOL',
             'market_filter': lambda corp: corp['MARKET'] == 'nasdaq'
         },
-        'yahoofinance': {
-            'params': [],
-            'batch_size': 1,
-            'count': 10
-        },
+        # 'yahoofinance': {
+        #     'params': [],
+        #     'batch_size': 1,
+        #     'count': 10
+        # },
         'hankyung': {
             'params': ['url'],
-            'batch_size': 500,
+            'batch_size': 10,
             'categories': ['economy', 'financial-market', 'industry', 
                          'politics', 'society', 'international'],
             'url_pattern': 'https://www.hankyung.com/{category}?page={page}'
@@ -260,30 +256,30 @@ def run():
         'stocktwits': 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY_WORK',
         'yahoofinance': 'COL_YAHOOFINANCE_DAILY_WORK',
         'hankyung': 'COL_SCRAPPING_HANKYUNG_DAILY_WORK',
-        'financial': 'COL_FINANCIAL_DAILY_WORK'
+        'financial': 'COL_FINANCIAL_DAILY_WORK' 
     }
     
-    client_source = MongoClient('mongodb://192.168.0.50:27017/')
+    client_source = MongoClient('mongodb://192.168.0.48:27017/')
     source_db = client_source['DB_SGMN']
 
-    client_target = MongoClient('mongodb://192.168.0.91:27017/')
-    target_db = client_target['DB_TEST']
+    client_target = MongoClient('mongodb://192.168.0.48:27017/')
+    target_db = client_target['DB_SGMN']
 
     scheduler.add_job(JobProducer.register_all_daily_jobs, 
                       'interval', 
-                      minutes=5, 
+                      minutes=10, 
                       id='register_all_daily_jobs', 
                       max_instances=1, 
                       coalesce=True, 
                       args=[source_db,target_db,collections,JOB_CONFIGS,client_target]
                       )
     
-    client_man = MongoClient('mongodb://192.168.0.91:27017/')
-    db = client_man['DB_TEST']
+    client_man = MongoClient('mongodb://192.168.0.48:27017/')
+    db = client_man['DB_SGMN']
     days = 1
     scheduler.add_job(QueueManager.cleanup_work_collections, 
                       'interval', 
-                      minutes=5, 
+                      minutes=10, 
                       id='cleanup_work_collections', 
                       max_instances=1, 
                       coalesce=True, 
@@ -296,97 +292,101 @@ def run():
         
     # 컬렉션 매핑 설정
     collection_mapping = {
-        'COL_STOCKPRICE_EMBEDDED_DAILY': 'COL_STOCKPRICE_EMBEDDED',
+        'COL_STOCKPRICE_DAILY': 'COL_STOCKPRICE_HISTORY',
         'COL_SCRAPPING_TOSS_COMMENT_DAILY': 'COL_SCRAPPING_TOSS_COMMENT_HISTORY',
         'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY': 'COL_SCRAPPING_STOCKTWITS_COMMENT_HISTORY',
-        'COL_SCRAPPING_NEWS_YAHOO_DAILY': 'COL_SCRAPPING_NEWS_YAHOO_HISTORY'
-        #'COL_SCRAPPING_HANKYUNG_DAILY': 'COL_HANKYUNG',
+        'COL_SCRAPPING_NEWS_YAHOO_DAILY': 'COL_SCRAPPING_NEWS_YAHOO_HISTORY',
+        'COL_SCRAPPING_HANKYUNG_DAILY': 'COL_SCRAPPING_HANKYUNG_HISTORY'
         #'COL_FINANCIAL_DAILY': 'COL_FINANCIAL'
     }
 
     scheduler.add_job(ResourceConsumer.process_all_daily_collections, 
                       'interval', 
-                      minutes=5, 
+                      minutes=10, 
                       id='process_all_daily_collections', 
                       max_instances=1, 
                       coalesce=True, 
                       args=[daily_db, resource_db, collection_mapping, client_con]
                       )
 
-    # # 스케줄 설정을 위한 딕셔너리
-    # SCHEDULE_CONFIGS = {
-    #     'news_5h': {
-    #         'trigger': 'interval',
-    #         'hours': 5,
-    #     },
-    #     'comment_1h': {
-    #         'trigger': 'interval',
-    #         'hours': 1,
-    #     },
-    #     'comment_30m': {
-    #         'trigger': 'interval',
-    #         'minutes': 30,
-    #     },
-    #     'comment_5m': {
-    #         'trigger': 'interval',
-    #         'minutes': 5,
-    #     },
-    #     'test_5s': {
-    #         'trigger': 'interval',
-    #         'seconds': 5,
-    #     }
-    # }
+    # 스케줄 설정을 위한 딕셔너리
+    SCHEDULE_CONFIGS = {
+        'news_5h': {
+            'trigger': 'interval',
+            'hours': 5,
+        },
+        'comment_1h': {
+            'trigger': 'interval',
+            'hours': 1,
+        },
+        'comment_30m': {
+            'trigger': 'interval',
+            'minutes': 30,
+        },
+        'comment_10m': {
+            'trigger': 'interval',
+            'minutes': 10,
+        },
+        'comment_5m': {
+            'trigger': 'interval',
+            'minutes': 5,
+        },
+        'test_5s': {
+            'trigger': 'interval',
+            'seconds': 5,
+        }
+    }
 
-    # func_list = [
-    #         {
-    #         "func": comment_scrap_stocktwits.run_stocktwits_scrap_list, 
-    #         "args": "symbol", 
-    #         "target": 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY', 
-    #         "work": "COL_STOCKTWITS_COMMENT_DAILY_WORK",
-    #         "schedule": "test_5s"
-    #     }
-    #     # {
-    #     #     "func": yahoo_finance_scrap.scrape_news_schedule_version, 
-    #     #     "args": "symbol", 
-    #     #     "target": 'COL_SCRAPPING_NEWS_YAHOO_DAILY', 
-    #     #     "work": "",
-    #     #     "schedule": "news_5h"
-    #     # },
-    #     # {
-    #     #     "func": scrap_toss_comment.run_toss_comments, 
-    #     #     "args": "symbol", 
-    #     #     "target": 'COL_SCRAPPING_TOSS_COMMENT_DAILY', 
-    #     #     "work": "COL_TOSS_COMMENT_DAILY_WORK",
-    #     #     "schedule": "comment_1h"
-    #     # },
-    #     # {
-    #     #     "func": comment_scrap_stocktwits.run_stocktwits_scrap_list, 
-    #     #     "args": "symbol", 
-    #     #     "target": 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY', 
-    #     #     "work": "COL_STOCKTWITS_COMMENT_DAILY_WORK",
-    #     #     "schedule": "comment_30m"
-    #     # },
-    #     # { 
-    #     #     "func": api_stockprice_yfinance.get_stockprice_yfinance_daily, 
-    #     #     "args": "symbol", 
-    #     #     "target": 'COL_STOCKPRICE_DAILY', 
-    #     #     "work": "COL_STOCKPRICE_DAILY_WORK",
-    #     #     "schedule": "comment_30m"
-    #     # }
-    # ]
+    func_list = [
+        {
+            "func": comment_scrap_stocktwits.run_stocktwits_scrap_list, 
+            "args": "SYMBOL", 
+            "target": 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY', 
+            "work": "COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY_WORK",
+            "schedule": "comment_5m"
+        },
+        {
+            "func": yahoo_finance_scrap.scrape_news_schedule_version, 
+            "args": "SYMBOL", 
+            "target": 'COL_SCRAPPING_NEWS_YAHOO_DAILY', 
+            "work": "",
+            "schedule": "comment_5m"
+        },
+        {
+            "func": scrap_toss_comment.run_toss_comments, 
+            "args": "SYMBOL", 
+            "target": 'COL_SCRAPPING_TOSS_COMMENT_DAILY', 
+            "work": "COL_SCRAPPING_TOSS_COMMENT_DAILY_WORK",
+            "schedule": "comment_5m"
+        },
+        { 
+            "func": api_stockprice_yfinance.get_stockprice_yfinance_daily, 
+            "args": "SYMBOL", 
+            "target": 'COL_STOCKPRICE_DAILY', 
+            "work": "COL_STOCKPRICE_DAILY_WORK",
+            "schedule": "comment_5m"
+        },
+        {
+            "func": bs4_scrapping.bs4_news_hankyung, 
+            "args": "URL", 
+            "target": 'COL_SCRAPPING_HANKYUNG_DAILY', 
+            "work": "COL_SCRAPPING_HANKYUNG_DAILY_WORK",
+            "schedule": "comment_5m"
+        },
+    ]
 
-    # for func in func_list:
-    #     schedule_config = SCHEDULE_CONFIGS[func['schedule']]
+    for func in func_list:
+        schedule_config = SCHEDULE_CONFIGS[func['schedule']]
         
-    #     scheduler.add_job(
-    #         register_job_with_mongo_cron,                         
-    #         trigger=schedule_config['trigger'],
-    #         coalesce=True, 
-    #         max_instances=1,
-    #         id=func['func'].__name__,
-    #         args=[client, ip_add, db_name, func['work'], func['target'], func['func'], func['args']],
-    #         **{k: v for k, v in schedule_config.items() if k != 'trigger'}
-    #     )
+        scheduler.add_job(
+            register_job_with_mongo_cron,                         
+            trigger=schedule_config['trigger'],
+            coalesce=True, 
+            max_instances=1,
+            id=func['func'].__name__,
+            args=[client, ip_add, db_name, func['work'], func['target'], func['func'], func['args']],
+            **{k: v for k, v in schedule_config.items() if k != 'trigger'}
+        )
     #     '''
     #     scheduler.add_job(
     #                 register_job_with_mongo_cron,                         
