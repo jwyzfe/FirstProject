@@ -22,7 +22,7 @@ class ResourceConsumer:
 
     # 중복 체크에 사용할 필드 정의 # 이거도 또 함수마다 달라 
     DUPLICATE_CHECK_FIELDS = {
-        'COL_STOCKPRICE_EMBEDDED': ['SYMBOL', 'time_data.DATE'],  # 점 표기법으로 중첩 필드 접근
+        'COL_STOCKPRICE_EMBEDDED': ['SYMBOL', 'TIME_DATA.DATE'],  # 점 표기법으로 중첩 필드 접근
         'COL_SCRAPPING_TOSS_COMMENT_HISTORY': ['COMMENT', 'DATETIME'],
         'COL_SCRAPPING_STOCKTWITS_COMMENT_HISTORY': ['CONTENT', 'DATETIME'],
         'COL_YAHOOFINANCE_HISTORY': ['NEWS_URL']
@@ -36,15 +36,61 @@ class ResourceConsumer:
     아 데일리도 바꾸어 넣어줘야해 ㅠㅠ
     api 호출 부분도 다 바꿔줘야해 ㅠㅠ
     
+
+    현재 소스 체크 해주고 
+    생각해 보니까 daily 에서 resource 로 옮기면 그 애들 삭제 해야해 
+    그럼 동시에 돌고 있는지 체크 해야? 어차피 혼자 도니까 괜찮나 
+
+    이제 확인 해야 할 것 
+    1. producing 잘 하는지
+    2. work 잘 지우는지
+    3. daily 잘 수행 하는지
+    4. 실제 consumer 들 잘 동작 하는지 
+
+    근대 유기적으로 돌아야 잘 된다는 거는 한번 멈춘다거나 하면 다시 돌때 문제가 생길 수 있다는 얘기인데? 
+
+    1. 번에서 예상 문제는 ? 없다 
+    2. 번에서 예상 문제는 ? 없다 
+    3. 번에서 예쌍 문제는? daily 중복으로 넣는 문제? 아니지 걍 drop 하면 되는데? 아니네 
+    1. 번에서 값을 두번 넣는 다던가 해서 drop 이후에 중복으로 값이 생겼고 그게 다시 insert 되면 중복 생김 
+    
+    
+    얘는 아주 나중에 해도 됨. 그러면 이거는 어쩔 수 없이 상당히 느린 주기로 main db 중복을 제거하는 루틴이 있어야 겠다 
+
     '''
 
-    # @staticmethod
-    # def setup_collection_indexes(collection, collection_name: str):
-    #     """컬렉션별 인덱스 설정"""
-    #     if collection_name in ResourceConsumer.TIMESERIES_COLLECTIONS:
-    #         index_fields = [(field, ASCENDING) for field in ResourceConsumer.TIMESERIES_COLLECTIONS[collection_name]]
-    #         collection.create_index(index_fields, unique=True)
-
+    @staticmethod
+    def remove_duplicates_from_list(data_list: List[Dict], collection_name: str) -> List[Dict]:
+        """데이터 리스트에서 중복 제거"""
+        if collection_name not in ResourceConsumer.DUPLICATE_CHECK_FIELDS:
+            return data_list
+            
+        check_fields = ResourceConsumer.DUPLICATE_CHECK_FIELDS[collection_name]
+        unique_data = {}
+        
+        for item in data_list:
+            # 중복 체크를 위한 키 생성
+            key_parts = []
+            for field in check_fields:
+                if "." in field:
+                    parent, child = field.split(".")
+                    value = item.get(parent, {}).get(child)
+                else:
+                    value = item.get(field)
+                key_parts.append(str(value))
+            
+            unique_key = tuple(key_parts)  # 리스트는 해시불가능하므로 튜플로 변환
+            
+            # 중복이 아닌 경우에만 저장
+            if unique_key not in unique_data:
+                unique_data[unique_key] = item
+        
+        removed_count = len(data_list) - len(unique_data)
+        if removed_count > 0:
+            print(f"Removed {removed_count} duplicates from daily data in {collection_name}")
+            
+        return list(unique_data.values())
+    
     @staticmethod
     def remove_duplicates(collection, collection_name: str):
         """컬렉션 내 중복 데이터 제거"""
@@ -102,28 +148,28 @@ class ResourceConsumer:
                                daily_collection: str, resource_collection: str,
                                client: MongoClient):
         """일일 컬렉션 처리"""
-        print(f"Processing {daily_collection} -> {resource_collection}")
-        
-        # # 인덱스 설정
-        # ResourceConsumer.setup_collection_indexes(resource_db[resource_collection], resource_collection)
+        print(f"\nProcessing {daily_collection} -> {resource_collection}")
         
         # 일일 데이터 조회 및 _id 필드 제거
-        daily_data = list(daily_db[daily_collection].find({}, {'_id': 0}))  # _id 필드 제외
+        daily_data = list(daily_db[daily_collection].find({}, {'_id': 0}))
+        print(f"Found {len(daily_data)} documents in daily collection")
         
         if daily_data:
+            # 데이터 삽입 전 중복 제거
+            unique_data = ResourceConsumer.remove_duplicates_from_list(daily_data, resource_collection)
+            print(f"Inserting {len(unique_data)} unique documents to resource collection")
+            
             # 공용 insert 모듈 사용
             connect_mongo.insert_recode_in_mongo_notime(
                 client=client,
                 dbname=resource_db.name,
                 collectionname=resource_collection,
-                input_list=daily_data
+                input_list=unique_data
             )
-            
-            # 중복 제거
-            ResourceConsumer.remove_duplicates(
-                resource_db[resource_collection],
-                resource_collection
-            )
+
+             # daily 컬렉션 삭제
+            daily_db[daily_collection].drop()
+            print(f"Dropped daily collection: {daily_collection}")
 
     @staticmethod
     def process_all_daily_collections(daily_db: Database, resource_db: Database, 
@@ -158,9 +204,10 @@ if __name__ == "__main__":
     daily_db = client['DB_SGMN']
     resource_db = client['DB_SGMN']
     
+    # 아무리 그래도 너무 오래 걸림 자체 중복만 해결해서 넘기고 전체 중복은 아무래도 따로 하게 해야 할듯 
     # 컬렉션 매핑 설정
     collection_mapping = {
-        'COL_STOCKPRICE_EMBEDDED_DAILY': 'COL_STOCKPRICE_EMBEDDED',
+        'COL_STOCKPRICE_EMBEDDED_DAILY': 'COL_STOCKPRICE_EMBEDDED', # 이거는 최신을 넣는 거니까 캐싱하는게 나을 듯  
         'COL_SCRAPPING_TOSS_COMMENT_DAILY': 'COL_SCRAPPING_TOSS_COMMENT_HISTORY',
         'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY': 'COL_SCRAPPING_STOCKTWITS_COMMENT_HISTORY',
         'COL_SCRAPPING_NEWS_YAHOO_DAILY': 'COL_SCRAPPING_NEWS_YAHOO_HISTORY'

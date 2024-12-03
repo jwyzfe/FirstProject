@@ -36,7 +36,7 @@ def migrate_to_timeseries_embedded(source_collection, target_collection, batch_s
                 # 시간 데이터를 임베디드 문서로 구성
                 time_data = {
                     "DATE": doc["DATE"],
-                    "price_data": {
+                    "PRICE_DATA": {
                         "OPEN": doc["OPEN"],
                         "HIGH": doc["HIGH"],
                         "LOW": doc["LOW"],
@@ -50,7 +50,7 @@ def migrate_to_timeseries_embedded(source_collection, target_collection, batch_s
                 # SYMBOL을 최상위로
                 new_doc = {
                     "SYMBOL": doc["SYMBOL"],
-                    "time_data": time_data,
+                    "TIME_DATA": time_data,
                     "CREATED_AT": doc.get("CREATED_AT", datetime.utcnow())
                 }
                 
@@ -74,24 +74,24 @@ if __name__ == "__main__":
     # 타임시리즈 컬렉션 생성
     try:
         # 기존 컬렉션이 있다면 삭제
-        if "COL_STOCKPRICE_EMBEDDED" in db.list_collection_names():
+        if "COL_STOCKPRICE_EMBEDDED_DAILY" in db.list_collection_names():
             print("Dropping existing collection and its buckets...")
-            db.drop_collection("COL_STOCKPRICE_EMBEDDED")
+            db.drop_collection("COL_STOCKPRICE_EMBEDDED_DAILY")
             
-        db.create_collection("COL_STOCKPRICE_EMBEDDED")
+        db.create_collection("COL_STOCKPRICE_EMBEDDED_DAILY")
         print("Created new timeseries collection")
     except Exception as e:
         print(f"Collection already exists or error occurred: {e}")
 
     # 컬렉션 설정
-    source_collection = db['COL_STOCKPRICE_HISTORY']
-    target_collection = db['COL_STOCKPRICE_EMBEDDED']
+    source_collection = db['COL_STOCKPRICE_DAILY']
+    target_collection = db['COL_STOCKPRICE_EMBEDDED_DAILY']
 
     # 인덱스 생성
     # SYMBOL에 대한 인덱스 생성
     target_collection.create_index([("SYMBOL", 1)])
     # 복합 인덱스 생성
-    target_collection.create_index([("SYMBOL", 1), ("time_data.DATE", 1)])
+    target_collection.create_index([("SYMBOL", 1), ("TIME_DATA.DATE", 1)])
 
     # 데이터 마이그레이션 실행
     migrate_to_timeseries_embedded(source_collection, target_collection)

@@ -271,7 +271,7 @@ def run():
 
     scheduler.add_job(JobProducer.register_all_daily_jobs, 
                       'interval', 
-                      seconds=5, 
+                      minutes=5, 
                       id='register_all_daily_jobs', 
                       max_instances=1, 
                       coalesce=True, 
@@ -283,7 +283,7 @@ def run():
     days = 1
     scheduler.add_job(QueueManager.cleanup_work_collections, 
                       'interval', 
-                      seconds=5, 
+                      minutes=5, 
                       id='cleanup_work_collections', 
                       max_instances=1, 
                       coalesce=True, 
@@ -291,27 +291,22 @@ def run():
                       )
     
     client_con = MongoClient('mongodb://192.168.0.48:27017/')
-    daily_db = client_con['DB_TEST']
-    resource_db = client_con['DB_TEST']
+    daily_db = client_con['DB_SGMN']
+    resource_db = client_con['DB_SGMN']
         
     # 컬렉션 매핑 설정
     collection_mapping = {
-        'COL_STOCKPRICE_DAILY': 'COL_STOCKPRICE_HISTORY_TIME',
+        'COL_STOCKPRICE_EMBEDDED_DAILY': 'COL_STOCKPRICE_EMBEDDED',
         'COL_SCRAPPING_TOSS_COMMENT_DAILY': 'COL_SCRAPPING_TOSS_COMMENT_HISTORY',
         'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY': 'COL_SCRAPPING_STOCKTWITS_COMMENT_HISTORY',
         'COL_SCRAPPING_NEWS_YAHOO_DAILY': 'COL_SCRAPPING_NEWS_YAHOO_HISTORY'
         #'COL_SCRAPPING_HANKYUNG_DAILY': 'COL_HANKYUNG',
         #'COL_FINANCIAL_DAILY': 'COL_FINANCIAL'
     }
-    # 잘 동작하는지 어떻게 테스트? 
-    # 어쩔수 없다 일단 다 백업 만들어서 테스트 
-    # 다른건 상대적으로 작으니까 다른 romote 공간(48)에 옮겨서 작업 하자
-    # price는 time serise 상대로 테스트 해보자 
-    # daily도 복사 해서 써야해 
-    # 일단 필요한 col 리스트업 
+
     scheduler.add_job(ResourceConsumer.process_all_daily_collections, 
                       'interval', 
-                      seconds=5, 
+                      minutes=5, 
                       id='process_all_daily_collections', 
                       max_instances=1, 
                       coalesce=True, 
