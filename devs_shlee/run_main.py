@@ -163,8 +163,8 @@ def register_job_with_mongo_cron(client, ip_add, db_name, col_name_work, col_nam
 def run():
 
     config = read_config()
-    ip_add = config['MongoDB_remote_readonly']['ip_add']
-    db_name = config['MongoDB_remote_readonly']['db_name']
+    ip_add = config['MongoDB_remote']['ip_add']
+    db_name = config['MongoDB_remote']['db_name']
     col_name = f'COL_STOCKPRICE_WORK' # 데이터 읽을 collection
 
     # MongoDB 서버에 연결 
@@ -236,6 +236,22 @@ def run():
         }
     }
 
+    # 스케줄 설정을 위한 딕셔너리
+    SCHEDULE_CONFIGS = {
+        'hours_8': {
+            'trigger': 'interval',
+            'hours': 8,
+        },
+        'hours_3': {
+            'trigger': 'interval',
+            'hours': 3,
+        },
+        'minutes_10': {
+            'trigger': 'interval',
+            'minutes': 10,
+        }
+    }
+
     collections = {
         'corp_list': 'COL_NAS25_KOSPI25_CORPLIST',
         'financial_corp': 'COL_FINANCIAL_CORPLIST',
@@ -250,14 +266,13 @@ def run():
     client_source = MongoClient('mongodb://192.168.0.50:27017/')
     source_db = client_source['DB_SGMN']
 
-    client_target = MongoClient('mongodb://192.168.0.48:27017/')
+    client_target = MongoClient('mongodb://192.168.0.50:27017/')
     target_db = client_target['DB_SGMN']
 
     JobProducer.register_all_daily_jobs(source_db,target_db,collections,JOB_CONFIGS,client_target)
 
     scheduler.add_job(JobProducer.register_all_daily_jobs, 
-                      'interval', 
-                      minutes=10, 
+                      **SCHEDULE_CONFIGS['hours_8'],
                       id='register_all_daily_jobs', 
                       max_instances=1, 
                       coalesce=True, 
@@ -265,19 +280,18 @@ def run():
     )
 
 
-    client_man = MongoClient('mongodb://192.168.0.48:27017/')
+    client_man = MongoClient('mongodb://192.168.0.50:27017/')
     db = client_man['DB_SGMN']
     days = 1
     scheduler.add_job(QueueManager.cleanup_work_collections, 
-                      'interval', 
-                      minutes=10, 
+                      **SCHEDULE_CONFIGS['hours_8'],
                       id='cleanup_work_collections', 
                       max_instances=1, 
                       coalesce=True, 
                       args=[db, days]
                       )
     
-    client_con = MongoClient('mongodb://192.168.0.48:27017/')
+    client_con = MongoClient('mongodb://192.168.0.50:27017/')
     daily_db = client_con['DB_SGMN']
     resource_db = client_con['DB_SGMN']
         
@@ -292,45 +306,12 @@ def run():
     }
 
     scheduler.add_job(ResourceConsumer.process_all_daily_collections, 
-                      'interval', 
-                      minutes=10, 
+                      **SCHEDULE_CONFIGS['hours_8'],
                       id='process_all_daily_collections', 
                       max_instances=1, 
                       coalesce=True, 
                       args=[daily_db, resource_db, collection_mapping, client_con]
                       )
-
-    # 스케줄 설정을 위한 딕셔너리
-    SCHEDULE_CONFIGS = {
-        'news_5h': {
-            'trigger': 'interval',
-            'hours': 5,
-        },
-        'comment_1h': {
-            'trigger': 'interval',
-            'hours': 1,
-        },
-        'comment_30m': {
-            'trigger': 'interval',
-            'minutes': 30,
-        },
-        'comment_10m': {
-            'trigger': 'interval',
-            'minutes': 10,
-        },
-        'comment_5m': {
-            'trigger': 'interval',
-            'minutes': 5,
-        },
-        'comment_1m': {
-            'trigger': 'interval',
-            'minutes': 1,
-        },
-        'test_5s': {
-            'trigger': 'interval',
-            'seconds': 5,
-        }
-    }
 
     func_list = [
         { 
@@ -338,35 +319,35 @@ def run():
             "args": "SYMBOL", 
             "target": 'COL_STOCKPRICE_DAILY', 
             "work": "COL_STOCKPRICE_DAILY_WORK",
-            "schedule": "comment_1m"
+            "schedule": "minutes_10"
         },
         {
             "func": comment_scrap_stocktwits.run_stocktwits_scrap_list, 
             "args": "SYMBOL", 
             "target": 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY', 
             "work": "COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY_WORK",
-            "schedule": "comment_5m"
+            "schedule": "minutes_10"
         },
         {
             "func": yahoo_finance_scrap.scrape_news_schedule_version, 
             "args": "SYMBOL", 
             "target": 'COL_SCRAPPING_NEWS_YAHOO_DAILY', 
             "work": "",
-            "schedule": "comment_5m"
+            "schedule": "hours_3"
         },
         {
             "func": scrap_toss_comment.run_toss_comments, 
             "args": "SYMBOL", 
             "target": 'COL_SCRAPPING_TOSS_COMMENT_DAILY', 
             "work": "COL_SCRAPPING_TOSS_COMMENT_DAILY_WORK",
-            "schedule": "comment_5m"
+            "schedule": "minutes_10"
         },
         {
             "func": bs4_scrapping.bs4_news_hankyung, 
             "args": "URL", 
             "target": 'COL_SCRAPPING_HANKYUNG_DAILY', 
             "work": "COL_SCRAPPING_HANKYUNG_DAILY_WORK",
-            "schedule": "comment_5m"
+            "schedule": "hours_3"
         }
     ]
 
