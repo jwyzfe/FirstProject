@@ -86,7 +86,7 @@ class connect_mongo:
             col_name, 
             {"ISWORK": "fin"}
         )
-        finished_ref_ids = [] if finished_records.empty else finished_records['ref_id'].tolist()
+        finished_ref_ids = [] if finished_records.empty else finished_records['REF_ID'].tolist()
 
         # 2. ready 상태이면서 아직 완료되지 않은(ref_id가 finished_ref_ids에 없는) 레코드를 찾습니다
         ready_records = cls.get_records_dataframe(

@@ -142,7 +142,7 @@ def register_job_with_mongo_cron(client, ip_add, db_name, col_name_work, col_nam
             # symbol 컬럼만 리스트로 변환
             symbol_list = symbols_batch[insert_data].tolist()
 
-            result_list = update_job_status(client, db_name, col_name_work, symbols_batch, 'working', insert_data)
+            # result_list = update_job_status(client, db_name, col_name_work, symbols_batch, 'working', insert_data)
 
             # 선택된 symbol 처리
             result_data = func(symbol_list)
@@ -153,18 +153,6 @@ def register_job_with_mongo_cron(client, ip_add, db_name, col_name_work, col_nam
         
             result_list = update_job_status(client, db_name, col_name_work, symbols_batch, 'fin', insert_data)
             
-            # # 처리된 20개의 symbol에 대해서만 상태 업데이트
-            # update_data_list = []
-            # for _, row in symbols_batch.iterrows():
-            #     update_data = {
-            #         'REF_ID': row['_id'],  # 원본 레코드의 ID를 참조 ID로 저장
-            #         'ISWORK': 'fin',
-            #         insert_data: row[insert_data]
-            #     }
-            #     update_data_list.append(update_data)
-
-            # result_list = connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name_work, update_data_list)
-
     except Exception as e:
         print(e)
         # client.close()  # 필요 시 클라이언트 닫기
@@ -259,11 +247,13 @@ def run():
         'financial': 'COL_FINANCIAL_DAILY_WORK' 
     }
     
-    client_source = MongoClient('mongodb://192.168.0.48:27017/')
+    client_source = MongoClient('mongodb://192.168.0.50:27017/')
     source_db = client_source['DB_SGMN']
 
     client_target = MongoClient('mongodb://192.168.0.48:27017/')
     target_db = client_target['DB_SGMN']
+
+    JobProducer.register_all_daily_jobs(source_db,target_db,collections,JOB_CONFIGS,client_target)
 
     scheduler.add_job(JobProducer.register_all_daily_jobs, 
                       'interval', 
@@ -272,8 +262,9 @@ def run():
                       max_instances=1, 
                       coalesce=True, 
                       args=[source_db,target_db,collections,JOB_CONFIGS,client_target]
-                      )
-    
+    )
+
+
     client_man = MongoClient('mongodb://192.168.0.48:27017/')
     db = client_man['DB_SGMN']
     days = 1
@@ -331,6 +322,10 @@ def run():
             'trigger': 'interval',
             'minutes': 5,
         },
+        'comment_1m': {
+            'trigger': 'interval',
+            'minutes': 1,
+        },
         'test_5s': {
             'trigger': 'interval',
             'seconds': 5,
@@ -338,6 +333,13 @@ def run():
     }
 
     func_list = [
+        { 
+            "func": api_stockprice_yfinance.get_stockprice_yfinance_daily, 
+            "args": "SYMBOL", 
+            "target": 'COL_STOCKPRICE_DAILY', 
+            "work": "COL_STOCKPRICE_DAILY_WORK",
+            "schedule": "comment_1m"
+        },
         {
             "func": comment_scrap_stocktwits.run_stocktwits_scrap_list, 
             "args": "SYMBOL", 
@@ -359,20 +361,13 @@ def run():
             "work": "COL_SCRAPPING_TOSS_COMMENT_DAILY_WORK",
             "schedule": "comment_5m"
         },
-        { 
-            "func": api_stockprice_yfinance.get_stockprice_yfinance_daily, 
-            "args": "SYMBOL", 
-            "target": 'COL_STOCKPRICE_DAILY', 
-            "work": "COL_STOCKPRICE_DAILY_WORK",
-            "schedule": "comment_5m"
-        },
         {
             "func": bs4_scrapping.bs4_news_hankyung, 
             "args": "URL", 
             "target": 'COL_SCRAPPING_HANKYUNG_DAILY', 
             "work": "COL_SCRAPPING_HANKYUNG_DAILY_WORK",
             "schedule": "comment_5m"
-        },
+        }
     ]
 
     for func in func_list:
