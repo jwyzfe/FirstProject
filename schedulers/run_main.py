@@ -261,33 +261,33 @@ def run():
         }
     }
 
-    # client_source = MongoClient(ip_add)
-    # source_db = client_source['DB_SGMN']
+    client_source = MongoClient(ip_add)
+    source_db = client_source['DB_SGMN']
 
-    # client_target = MongoClient(ip_add)
-    # target_db = client_target['DB_SGMN']
+    client_target = MongoClient(ip_add)
+    target_db = client_target['DB_SGMN']
 
-    # JobProducer.register_all_daily_jobs(source_db,target_db,client_target,JOBS_CONFIG)
+    JobProducer.register_all_daily_jobs(source_db,target_db,client_target,JOBS_CONFIG)
 
-    # scheduler.add_job(JobProducer.register_all_daily_jobs, 
-    #                   **SCHEDULE_CONFIGS['test_10'],
-    #                   id='register_all_daily_jobs', 
-    #                   max_instances=1, 
-    #                   coalesce=True, 
-    #                   args=[source_db,target_db,client_target,JOBS_CONFIG]
-    # )
+    scheduler.add_job(JobProducer.register_all_daily_jobs, 
+                      **SCHEDULE_CONFIGS['hours_8'],
+                      id='register_all_daily_jobs', 
+                      max_instances=1, 
+                      coalesce=True, 
+                      args=[source_db,target_db,client_target,JOBS_CONFIG]
+    )
 
 
-    # client_man = MongoClient(ip_add)
-    # db = client_man['DB_SGMN']
-    # days = 1
-    # scheduler.add_job(QueueManager.cleanup_work_collections, 
-    #                   **SCHEDULE_CONFIGS['test_10'],
-    #                   id='cleanup_work_collections', 
-    #                   max_instances=1, 
-    #                   coalesce=True, 
-    #                   args=[db, days]
-    #                   )
+    client_man = MongoClient(ip_add)
+    db = client_man['DB_SGMN']
+    days = 1
+    scheduler.add_job(QueueManager.cleanup_work_collections, 
+                      **SCHEDULE_CONFIGS['hours_8'],
+                      id='cleanup_work_collections', 
+                      max_instances=1, 
+                      coalesce=True, 
+                      args=[db, days]
+                      )
     
     client_con = MongoClient(ip_add)
     daily_db = client_con['DB_SGMN']
@@ -318,63 +318,63 @@ def run():
     }
 
     scheduler.add_job(DataIntegrator.process_all_daily_collections, 
-                      **SCHEDULE_CONFIGS['test_10'],
+                      **SCHEDULE_CONFIGS['hours_8'],
                       id='process_all_daily_collections', 
                       max_instances=1, 
                       coalesce=True, 
                       args=[daily_db, resource_db, client_con, COLLECTION_CONFIG]
                       )
 
-    # func_list = [
-    #     { 
-    #         "func": api_stockprice_yfinance.get_stockprice_yfinance_daily, 
-    #         "args": "SYMBOL", 
-    #         "target": 'COL_STOCKPRICE_DAILY', 
-    #         "work": "COL_STOCKPRICE_DAILY_WORK",
-    #         "schedule": "test_10"
-    #     },
-    #     {
-    #         "func": comment_scrap_stocktwits.run_stocktwits_scrap_list, 
-    #         "args": "SYMBOL", 
-    #         "target": 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY', 
-    #         "work": "COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY_WORK",
-    #         "schedule": "test_10"
-    #     },
-    #     {
-    #         "func": yahoo_finance_scrap.scrape_news_schedule_version, 
-    #         "args": "SYMBOL", 
-    #         "target": 'COL_SCRAPPING_NEWS_YAHOO_DAILY', 
-    #         "work": "",
-    #         "schedule": "test_10"
-    #     },
-    #     {
-    #         "func": scrap_toss_comment.run_toss_comments, 
-    #         "args": "SYMBOL", 
-    #         "target": 'COL_SCRAPPING_TOSS_COMMENT_DAILY', 
-    #         "work": "COL_SCRAPPING_TOSS_COMMENT_DAILY_WORK",
-    #         "schedule": "test_10"
-    #     },
-    #     {
-    #         "func": bs4_scrapping.bs4_news_hankyung, 
-    #         "args": "URL", 
-    #         "target": 'COL_SCRAPPING_HANKYUNG_DAILY', 
-    #         "work": "COL_SCRAPPING_HANKYUNG_DAILY_WORK",
-    #         "schedule": "test_10"
-    #     }
-    # ]
+    func_list = [
+        { 
+            "func": api_stockprice_yfinance.get_stockprice_yfinance_daily, 
+            "args": "SYMBOL", 
+            "target": 'COL_STOCKPRICE_DAILY', 
+            "work": "COL_STOCKPRICE_DAILY_WORK",
+            "schedule": "minutes_10"
+        },
+        {
+            "func": comment_scrap_stocktwits.run_stocktwits_scrap_list, 
+            "args": "SYMBOL", 
+            "target": 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY', 
+            "work": "COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY_WORK",
+            "schedule": "minutes_10"
+        },
+        {
+            "func": yahoo_finance_scrap.scrape_news_schedule_version, 
+            "args": "SYMBOL", 
+            "target": 'COL_SCRAPPING_NEWS_YAHOO_DAILY', 
+            "work": "",
+            "schedule": "hours_3"
+        },
+        {
+            "func": scrap_toss_comment.run_toss_comments, 
+            "args": "SYMBOL", 
+            "target": 'COL_SCRAPPING_TOSS_COMMENT_DAILY', 
+            "work": "COL_SCRAPPING_TOSS_COMMENT_DAILY_WORK",
+            "schedule": "minutes_10"
+        },
+        {
+            "func": bs4_scrapping.bs4_news_hankyung, 
+            "args": "URL", 
+            "target": 'COL_SCRAPPING_HANKYUNG_DAILY', 
+            "work": "COL_SCRAPPING_HANKYUNG_DAILY_WORK",
+            "schedule": "hours_3"
+        }
+    ]
 
-    # for func in func_list:
-    #     schedule_config = SCHEDULE_CONFIGS[func['schedule']]
+    for func in func_list:
+        schedule_config = SCHEDULE_CONFIGS[func['schedule']]
         
-    #     scheduler.add_job(
-    #         register_job_with_mongo_cron,                         
-    #         trigger=schedule_config['trigger'],
-    #         coalesce=True, 
-    #         max_instances=1,
-    #         id=func['func'].__name__,
-    #         args=[client, ip_add, db_name, func['work'], func['target'], func['func'], func['args']],
-    #         **{k: v for k, v in schedule_config.items() if k != 'trigger'}
-    #     )
+        scheduler.add_job(
+            register_job_with_mongo_cron,                         
+            trigger=schedule_config['trigger'],
+            coalesce=True, 
+            max_instances=1,
+            id=func['func'].__name__,
+            args=[client, ip_add, db_name, func['work'], func['target'], func['func'], func['args']],
+            **{k: v for k, v in schedule_config.items() if k != 'trigger'}
+        )
     #     '''
     #     scheduler.add_job(
     #                 register_job_with_mongo_cron,                         
