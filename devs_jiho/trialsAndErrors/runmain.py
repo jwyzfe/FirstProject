@@ -27,9 +27,9 @@ from commons.mongo_find_recode import connect_mongo as connect_mongo_find
 # 직접 구현한 부분을 import 해서 scheduler에 등록
 from devs.api_test_class import api_test_class
 from devs.api_yfinance_stockprice import api_stockprice_yfinance 
-from devs_oz.MarketSenti_yf import calc_market_senti
-from devs_jihunshim.bs4_news_hankyung import bs4_scrapping
-from devs_jiho.dartApi import CompanyFinancials
+from devs_oz.release.MarketSenti_yf import calc_market_senti
+from devs_jihunshim.release.bs4_news_hankyung import bs4_scrapping
+from devs_jiho.release.dartApi import CompanyFinancials
 
 
 # common 에 넣을 예정

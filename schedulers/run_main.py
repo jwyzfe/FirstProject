@@ -29,15 +29,14 @@ from commons.mongo_find_recode import connect_mongo as connect_mongo_find
 from devs.api_test_class import api_test_class
 from devs_shlee.release.api_stockprice_yfinance_update import api_stockprice_yfinance 
 from devs_shlee.release.sel_comment_scrap_stocktwits import comment_scrap_stocktwits 
-# from devs_shlee.test_yahoo_scrap import yahoo_finance_scrap 
-from devs_oz.MarketSenti_yf import calc_market_senti
-from devs_oz.news_scrapping_yahoo_headless import yahoo_finance_scrap
-from devs_jihunshim.bs4_news_hankyung import bs4_scrapping
-from devs_jiho.dartApi import CompanyFinancials
-from devs_jiho.ongoing_updateDailyTossComments import scrap_toss_comment
-from devs_shlee.mongodb_producer import JobProducer
-from devs_shlee.mongodb_queuemanager import QueueManager
-from devs_shlee.mongodb_dailytohistory import ResourceConsumer
+from devs_oz.release.MarketSenti_yf import calc_market_senti
+from devs_oz.release.news_scrapping_yahoo_headless import yahoo_finance_scrap
+from devs_jihunshim.release.bs4_news_hankyung import bs4_scrapping
+from devs_jiho.release.dartApi import CompanyFinancials
+from devs_jiho.release.ongoing_updateDailyTossComments import scrap_toss_comment
+from manage.mongodb_producer import JobProducer
+from manage.mongodb_queuemanager import QueueManager
+from manage.mongodb_dailytohistory import ResourceConsumer
 
 
 # common 에 넣을 예정
