@@ -79,7 +79,7 @@ class JobProducer:
                     url = config['url_pattern'].format(category=category, page=page)
                     JobProducer.register_job(target_db, target_collection, {'url': url}, client)
         
-        # 단순 반복 작업 (야후 파이낸스)
+        # 반복 작업 (야후 파이낸스)
         elif 'count' in config:
             for _ in range(config['count']):
                 JobProducer.register_job(target_db, target_collection, {}, client)
