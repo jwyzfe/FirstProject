@@ -12,13 +12,6 @@ from commons.mongo_insert_recode import connect_mongo
 
 class ResourceConsumer:
     """일일 작업 결과를 자원 DB에 저장하는 Consumer 클래스"""
-    
-    # # TimeSeries 인덱스가 필요한 컬렉션 정의
-    # TIMESERIES_COLLECTIONS = {
-    #     'COL_STOCKPRICE': ['SYMBOL', 'DATE']
-    #     #'COL_TOSS_COMMENT': ['SYMBOL', 'CREATED_AT'],
-    #     #'COL_STOCKTWITS_COMMENT': ['SYMBOL', 'CREATED_AT']
-    # }
 
     # 중복 체크에 사용할 필드 정의 # 이거도 또 함수마다 달라 
     DUPLICATE_CHECK_FIELDS = {
@@ -27,39 +20,10 @@ class ResourceConsumer:
         'COL_SCRAPPING_STOCKTWITS_COMMENT_HISTORY': ['CONTENT', 'DATETIME'],
         'COL_YAHOOFINANCE_HISTORY': ['NEWS_URL']
     }
-    '''
-    COL_STOCKPRICE_EMBEDDED
-    time_data
-    {"DATE":"1999-11-18T05:00:00.000Z","price_data":{"OPEN":27.466216057307484,"HIGH":30.18265783814009,"LOW":24.146124660887075,"CLOSE":26.56073760986328,"VOLUME":62546380,"STOCKSPLITS":0,"DIVIDENDS":0}}
-    중복 보려면 symbol이랑 date 만 보면 되는게 아닐까? 
-    
-    아 데일리도 바꾸어 넣어줘야해 ㅠㅠ
-    api 호출 부분도 다 바꿔줘야해 ㅠㅠ
-    
 
-    현재 소스 체크 해주고 
-    생각해 보니까 daily 에서 resource 로 옮기면 그 애들 삭제 해야해 
-    그럼 동시에 돌고 있는지 체크 해야? 어차피 혼자 도니까 괜찮나 
-
-    이제 확인 해야 할 것 
-    1. producing 잘 하는지
-    2. work 잘 지우는지
-    3. daily 잘 수행 하는지
-    4. 실제 consumer 들 잘 동작 하는지 
-
-    근대 유기적으로 돌아야 잘 된다는 거는 한번 멈춘다거나 하면 다시 돌때 문제가 생길 수 있다는 얘기인데? 
-
-    1. 번에서 예상 문제는 ? 없다 
-    2. 번에서 예상 문제는 ? 없다 
-    3. 번에서 예쌍 문제는? daily 중복으로 넣는 문제? 아니지 걍 drop 하면 되는데? 아니네 
-    1. 번에서 값을 두번 넣는 다던가 해서 drop 이후에 중복으로 값이 생겼고 그게 다시 insert 되면 중복 생김 
-    consumer 리스트 다시 정리 하고 
-    전체 동작 테스트 
+    '''   
     이후 파라미터 db argument 화 하기 
-
-
     얘는 아주 나중에 해도 됨. => 그러면 이거는 어쩔 수 없이 상당히 느린 주기로 main db 중복을 제거하는 루틴이 있어야 겠다 
-
     '''
 
     @staticmethod
