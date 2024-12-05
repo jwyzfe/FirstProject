@@ -21,6 +21,8 @@ import pytz
 
 class api_stockprice_yfinance:
 
+
+
     def get_stockprice_yfinance_history(symbol_list):
         return_histlist = pd.DataFrame()  # 빈 DataFrame 생성
         print(f"start:{datetime.now(pytz.timezone('Asia/Seoul'))}")
@@ -257,15 +259,35 @@ def test_yfinance_func():
 
 if __name__ == '__main__':
 
-    # small_test_yfinance_func()
-    # corp_list = ['010950.ks']
-    # api_stockprice_yfinance.get_stockprice_yfinance(corp_list)
-    # working_api_yfinance_stockpricing()
-
     symbols = ["NVDA", "AAPL", "MSFT", "INVALID_SYMBOL", "AMZN", "META", "AVGO", "GOOGL", "TSLA", "GOOG", "BRK.B", '005930.KS', "010950.ks"]
-    # 심볼 리스트 (유효하지 않은 심볼 포함)
-    # symbols = ['AAPL', 'MSFT', 'INVALID_SYMBOL', 'GOOGL']
-    # symbols = ["NVDA"]
-    df_testprint = api_stockprice_yfinance.get_stockprice_yfinance_daily(symbols)
-    print(df_testprint)
+    
+    # 종목 심볼로 Ticker 객체 생성 (예: 삼성전자 - 005930.KS)
+    ticker = yf.Ticker("005930.KS")
+
+    # 재무상태표 가져오기 
+    balance_sheet = ticker.balance_sheet
+
+    # 손익계산서 가져오기
+    income_stmt = ticker.income_stmt 
+
+    # 현금흐름표 가져오기
+    cash_flow = ticker.cash_flow
+
+    # 분기별 재무제표를 보려면 quarterly=True 옵션 사용
+    quarterly_balance_sheet = ticker.quarterly_balance_sheet
+    quarterly_income_stmt = ticker.quarterly_income_stmt  
+    quarterly_cash_flow = ticker.quarterly_cash_flow
+
+    # 데이터 확인
+    print("=== 재무상태표 ===")
+    print(balance_sheet)
+
+    print("\n=== 손익계산서 ===") 
+    print(income_stmt)
+
+    print("\n=== 현금흐름표 ===")
+    print(cash_flow)
+    
+    # df_testprint = api_stockprice_yfinance.get_stockprice_yfinance_daily(symbols)
+    # print(df_testprint)
     pass
