@@ -21,8 +21,8 @@ from commons.templates.bs4_do_scrapping import bs4_scrapping
 from commons.mongo_find_recode import connect_mongo as connect_mongo_find
 
 # 직접 구현한 부분을 import 해서 scheduler에 등록
-from devs_shlee.api_stockprice_yfinance_daily import api_stockprice_yfinance 
-from devs_shlee.sel_comment_scrap_stocktwits import comment_scrap_stocktwits 
+from devs_shlee.release.api_stockprice_yfinance_daily import api_stockprice_yfinance 
+from devs_shlee.release.sel_comment_scrap_stocktwits import comment_scrap_stocktwits 
 
 # common 에 넣을 예정
 def register_job_with_mongo(client, ip_add, db_name, col_name_work, col_name_dest, func, insert_data):
