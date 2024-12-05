@@ -35,7 +35,7 @@ from devs_jiho.release.dartApi import CompanyFinancials
 from devs_jiho.release.ongoing_updateDailyTossComments import scrap_toss_comment
 from manage.mongodb_producer import JobProducer
 from manage.mongodb_queuemanager import QueueManager
-from manage.mongodb_dailytohistory import ResourceConsumer
+from manage.mongodb_dailytohistory import DataIntegrator
 
 
 # common 에 넣을 예정
@@ -161,8 +161,8 @@ def register_job_with_mongo_cron(client, ip_add, db_name, col_name_work, col_nam
 def run():
 
     config = read_config()
-    ip_add = config['MongoDB_remote']['ip_add']
-    db_name = config['MongoDB_remote']['db_name']
+    ip_add = config['MongoDB_remote_readonly']['ip_add']
+    db_name = config['MongoDB_remote_readonly']['db_name']
     col_name = f'COL_STOCKPRICE_WORK' # 데이터 읽을 collection
 
     # MongoDB 서버에 연결 
@@ -193,44 +193,51 @@ def run():
     '''
     # 추후 로거 필요하다면 wrapping 해야함
     # 작업 유형별 설정
-    JOB_CONFIGS = {
+    JOBS_CONFIG = {
         'yfinance': {
-            'source_collection': 'corp_list',
-            'params': ['symbol'],
-            'batch_size': 20,
-            'symbol_key': 'SYMBOL'
+            'collection': 'COL_STOCKPRICE_DAILY_WORK',
+            'source': {
+                'collection': 'COL_NAS25_KOSPI25_CORPLIST',
+                'symbol_field': 'SYMBOL'
+            },
+            'batch_size': 20
         },
         'toss': {
-            'source_collection': 'corp_list',
-            'params': ['symbol'],
-            'batch_size': 5,
-            'symbol_key': lambda corp: corp['SYMBOL_KS'] if corp['MARKET'] == 'kospi' else corp['SYMBOL'],
-            'market_filter': None
+            'collection': 'COL_SCRAPPING_TOSS_COMMENT_DAILY_WORK',
+            'source': {
+                'collection': 'COL_NAS25_KOSPI25_CORPLIST',
+                'symbol_field': lambda corp: corp['SYMBOL_KS'] if corp['MARKET'] == 'kospi' else corp['SYMBOL']
+            },
+            'batch_size': 5
         },
         'stocktwits': {
-            'source_collection': 'corp_list',
-            'params': ['symbol'],
-            'batch_size': 1,
-            'symbol_key': 'SYMBOL',
-            'market_filter': lambda corp: corp['MARKET'] == 'nasdaq'
+            'collection': 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY_WORK',
+            'source': {
+                'collection': 'COL_NAS25_KOSPI25_CORPLIST',
+                'symbol_field': 'SYMBOL',
+                'filter': lambda corp: corp['MARKET'] == 'nasdaq'
+            },
+            'batch_size': 1
         },
-        # 'yahoofinance': {
-        #     'params': [],
-        #     'batch_size': 1,
-        #     'count': 10
-        # },
+        'yahoofinance': {
+            'collection': 'COL_YAHOOFINANCE_DAILY_WORK',
+            'count': 10,
+            'batch_size': 1
+        },
         'hankyung': {
-            'params': ['url'],
-            'batch_size': 10,
+            'collection': 'COL_SCRAPPING_HANKYUNG_DAILY_WORK',
+            'url_base': 'https://www.hankyung.com/{category}?page={page}',
             'categories': ['economy', 'financial-market', 'industry', 
                          'politics', 'society', 'international'],
-            'url_pattern': 'https://www.hankyung.com/{category}?page={page}'
+            'batch_size': 500
         },
         'financial': {
-            'source_collection': 'financial_corp',
-            'params': ['registcode'],
-            'batch_size': 10,
-            'registcode_key': 'CORP_REGIST_NUM'
+            'collection': 'COL_FINANCIAL_DAILY_WORK',
+            'source': {
+                'collection': 'COL_FINANCIAL_CORPLIST',
+                'code_field': 'CORP_REGIST_NUM'
+            },
+            'batch_size': 10
         }
     }
 
@@ -247,120 +254,127 @@ def run():
         'minutes_10': {
             'trigger': 'interval',
             'minutes': 10,
+        },
+        'test_10': {
+            'trigger': 'interval',
+            'seconds': 10,
         }
     }
 
-    collections = {
-        'corp_list': 'COL_NAS25_KOSPI25_CORPLIST',
-        'financial_corp': 'COL_FINANCIAL_CORPLIST',
-        'yfinance': 'COL_STOCKPRICE_DAILY_WORK',
-        'toss': 'COL_SCRAPPING_TOSS_COMMENT_DAILY_WORK',
-        'stocktwits': 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY_WORK',
-        'yahoofinance': 'COL_YAHOOFINANCE_DAILY_WORK',
-        'hankyung': 'COL_SCRAPPING_HANKYUNG_DAILY_WORK',
-        'financial': 'COL_FINANCIAL_DAILY_WORK' 
-    }
+    # client_source = MongoClient(ip_add)
+    # source_db = client_source['DB_SGMN']
+
+    # client_target = MongoClient(ip_add)
+    # target_db = client_target['DB_SGMN']
+
+    # JobProducer.register_all_daily_jobs(source_db,target_db,client_target,JOBS_CONFIG)
+
+    # scheduler.add_job(JobProducer.register_all_daily_jobs, 
+    #                   **SCHEDULE_CONFIGS['test_10'],
+    #                   id='register_all_daily_jobs', 
+    #                   max_instances=1, 
+    #                   coalesce=True, 
+    #                   args=[source_db,target_db,client_target,JOBS_CONFIG]
+    # )
+
+
+    # client_man = MongoClient(ip_add)
+    # db = client_man['DB_SGMN']
+    # days = 1
+    # scheduler.add_job(QueueManager.cleanup_work_collections, 
+    #                   **SCHEDULE_CONFIGS['test_10'],
+    #                   id='cleanup_work_collections', 
+    #                   max_instances=1, 
+    #                   coalesce=True, 
+    #                   args=[db, days]
+    #                   )
     
-    client_source = MongoClient('mongodb://192.168.0.50:27017/')
-    source_db = client_source['DB_SGMN']
-
-    client_target = MongoClient('mongodb://192.168.0.50:27017/')
-    target_db = client_target['DB_SGMN']
-
-    JobProducer.register_all_daily_jobs(source_db,target_db,collections,JOB_CONFIGS,client_target)
-
-    scheduler.add_job(JobProducer.register_all_daily_jobs, 
-                      **SCHEDULE_CONFIGS['hours_8'],
-                      id='register_all_daily_jobs', 
-                      max_instances=1, 
-                      coalesce=True, 
-                      args=[source_db,target_db,collections,JOB_CONFIGS,client_target]
-    )
-
-
-    client_man = MongoClient('mongodb://192.168.0.50:27017/')
-    db = client_man['DB_SGMN']
-    days = 1
-    scheduler.add_job(QueueManager.cleanup_work_collections, 
-                      **SCHEDULE_CONFIGS['hours_8'],
-                      id='cleanup_work_collections', 
-                      max_instances=1, 
-                      coalesce=True, 
-                      args=[db, days]
-                      )
-    
-    client_con = MongoClient('mongodb://192.168.0.50:27017/')
+    client_con = MongoClient(ip_add)
     daily_db = client_con['DB_SGMN']
     resource_db = client_con['DB_SGMN']
         
-    # 컬렉션 매핑 설정
-    collection_mapping = {
-        'COL_STOCKPRICE_EMBEDDED_DAILY': 'COL_STOCKPRICE_EMBEDDED',
-        'COL_SCRAPPING_TOSS_COMMENT_DAILY': 'COL_SCRAPPING_TOSS_COMMENT_HISTORY',
-        'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY': 'COL_SCRAPPING_STOCKTWITS_COMMENT_HISTORY',
-        'COL_SCRAPPING_NEWS_YAHOO_DAILY': 'COL_SCRAPPING_NEWS_YAHOO_HISTORY',
-        'COL_SCRAPPING_HANKYUNG_DAILY': 'COL_SCRAPPING_HANKYUNG_HISTORY'
-        #'COL_FINANCIAL_DAILY': 'COL_FINANCIAL'
+    # 통합된 컬렉션 설정
+    COLLECTION_CONFIG = {
+        'yfinance': {
+            'source': 'COL_STOCKPRICE_EMBEDDED_DAILY',
+            'target': 'COL_STOCKPRICE_EMBEDDED',
+            'duplicate_fields': ['SYMBOL', 'TIME_DATA.DATE']
+        },
+        'toss': {
+            'source': 'COL_SCRAPPING_TOSS_COMMENT_DAILY',
+            'target': 'COL_SCRAPPING_TOSS_COMMENT_HISTORY',
+            'duplicate_fields': ['COMMENT', 'DATETIME']
+        },
+        'stocktwits': {
+            'source': 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY',
+            'target': 'COL_SCRAPPING_STOCKTWITS_COMMENT_HISTORY',
+            'duplicate_fields': ['CONTENT', 'DATETIME']
+        },
+        'yahoo': {
+            'source': 'COL_SCRAPPING_NEWS_YAHOO_DAILY',
+            'target': 'COL_SCRAPPING_NEWS_YAHOO_HISTORY',
+            'duplicate_fields': ['NEWS_URL']
+        }
     }
 
-    scheduler.add_job(ResourceConsumer.process_all_daily_collections, 
-                      **SCHEDULE_CONFIGS['hours_8'],
+    scheduler.add_job(DataIntegrator.process_all_daily_collections, 
+                      **SCHEDULE_CONFIGS['test_10'],
                       id='process_all_daily_collections', 
                       max_instances=1, 
                       coalesce=True, 
-                      args=[daily_db, resource_db, collection_mapping, client_con]
+                      args=[daily_db, resource_db, client_con, COLLECTION_CONFIG]
                       )
 
-    func_list = [
-        { 
-            "func": api_stockprice_yfinance.get_stockprice_yfinance_daily, 
-            "args": "SYMBOL", 
-            "target": 'COL_STOCKPRICE_DAILY', 
-            "work": "COL_STOCKPRICE_DAILY_WORK",
-            "schedule": "minutes_10"
-        },
-        {
-            "func": comment_scrap_stocktwits.run_stocktwits_scrap_list, 
-            "args": "SYMBOL", 
-            "target": 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY', 
-            "work": "COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY_WORK",
-            "schedule": "minutes_10"
-        },
-        {
-            "func": yahoo_finance_scrap.scrape_news_schedule_version, 
-            "args": "SYMBOL", 
-            "target": 'COL_SCRAPPING_NEWS_YAHOO_DAILY', 
-            "work": "",
-            "schedule": "hours_3"
-        },
-        {
-            "func": scrap_toss_comment.run_toss_comments, 
-            "args": "SYMBOL", 
-            "target": 'COL_SCRAPPING_TOSS_COMMENT_DAILY', 
-            "work": "COL_SCRAPPING_TOSS_COMMENT_DAILY_WORK",
-            "schedule": "minutes_10"
-        },
-        {
-            "func": bs4_scrapping.bs4_news_hankyung, 
-            "args": "URL", 
-            "target": 'COL_SCRAPPING_HANKYUNG_DAILY', 
-            "work": "COL_SCRAPPING_HANKYUNG_DAILY_WORK",
-            "schedule": "hours_3"
-        }
-    ]
+    # func_list = [
+    #     { 
+    #         "func": api_stockprice_yfinance.get_stockprice_yfinance_daily, 
+    #         "args": "SYMBOL", 
+    #         "target": 'COL_STOCKPRICE_DAILY', 
+    #         "work": "COL_STOCKPRICE_DAILY_WORK",
+    #         "schedule": "test_10"
+    #     },
+    #     {
+    #         "func": comment_scrap_stocktwits.run_stocktwits_scrap_list, 
+    #         "args": "SYMBOL", 
+    #         "target": 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY', 
+    #         "work": "COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY_WORK",
+    #         "schedule": "test_10"
+    #     },
+    #     {
+    #         "func": yahoo_finance_scrap.scrape_news_schedule_version, 
+    #         "args": "SYMBOL", 
+    #         "target": 'COL_SCRAPPING_NEWS_YAHOO_DAILY', 
+    #         "work": "",
+    #         "schedule": "test_10"
+    #     },
+    #     {
+    #         "func": scrap_toss_comment.run_toss_comments, 
+    #         "args": "SYMBOL", 
+    #         "target": 'COL_SCRAPPING_TOSS_COMMENT_DAILY', 
+    #         "work": "COL_SCRAPPING_TOSS_COMMENT_DAILY_WORK",
+    #         "schedule": "test_10"
+    #     },
+    #     {
+    #         "func": bs4_scrapping.bs4_news_hankyung, 
+    #         "args": "URL", 
+    #         "target": 'COL_SCRAPPING_HANKYUNG_DAILY', 
+    #         "work": "COL_SCRAPPING_HANKYUNG_DAILY_WORK",
+    #         "schedule": "test_10"
+    #     }
+    # ]
 
-    for func in func_list:
-        schedule_config = SCHEDULE_CONFIGS[func['schedule']]
+    # for func in func_list:
+    #     schedule_config = SCHEDULE_CONFIGS[func['schedule']]
         
-        scheduler.add_job(
-            register_job_with_mongo_cron,                         
-            trigger=schedule_config['trigger'],
-            coalesce=True, 
-            max_instances=1,
-            id=func['func'].__name__,
-            args=[client, ip_add, db_name, func['work'], func['target'], func['func'], func['args']],
-            **{k: v for k, v in schedule_config.items() if k != 'trigger'}
-        )
+    #     scheduler.add_job(
+    #         register_job_with_mongo_cron,                         
+    #         trigger=schedule_config['trigger'],
+    #         coalesce=True, 
+    #         max_instances=1,
+    #         id=func['func'].__name__,
+    #         args=[client, ip_add, db_name, func['work'], func['target'], func['func'], func['args']],
+    #         **{k: v for k, v in schedule_config.items() if k != 'trigger'}
+    #     )
     #     '''
     #     scheduler.add_job(
     #                 register_job_with_mongo_cron,                         
