@@ -158,24 +158,100 @@ def register_job_with_mongo_cron(client, ip_add, db_name, col_name_work, col_nam
     return
 
 
-def run():
-
+def run(PIPELINE_CONFIG):
+    # 기본 설정
     config = read_config()
     ip_add = config['MongoDB_remote_readonly']['ip_add']
     db_name = config['MongoDB_remote_readonly']['db_name']
-    col_name = f'COL_STOCKPRICE_WORK' # 데이터 읽을 collection
-
-    # MongoDB 서버에 연결 
-    client = MongoClient(ip_add) 
-
+    client = MongoClient(ip_add)
+    db = client[db_name]
+    
     scheduler = BackgroundScheduler()
-    
-    url = f'http://underkg.co.kr/news'
 
-    # 여기에 함수 등록 
-    # 넘길 변수 없으면 # insert_data = []
-    insert_data = "symbol" # [val1,val2,val3]
-    
+    # 스케줄 설정
+    SCHEDULE_CONFIGS = {
+        'hours_8': {
+            'trigger': 'interval',
+            'hours': 8,
+        },
+        'hours_3': {
+            'trigger': 'interval',
+            'hours': 3,
+        },
+        'minutes_10': {
+            'trigger': 'interval',
+            'minutes': 10,
+        }
+        ,
+        'test_10': {
+            'trigger': 'interval',
+            'seconds': 10,
+        }
+    }
+
+    # 1. 관리 작업 스케줄링 (Producer, QueueManager, Integrator)
+    scheduler.add_job(
+        JobProducer.register_all_daily_jobs,
+        **SCHEDULE_CONFIGS['test_10'], # hours_8
+        id='register_all_daily_jobs',
+        max_instances=1,
+        coalesce=True,
+        args=[db, db, client, PIPELINE_CONFIG]
+    )
+
+    scheduler.add_job(
+        QueueManager.cleanup_work_collections,
+        **SCHEDULE_CONFIGS['test_10'], # hours_8
+        id='cleanup_work_collections',
+        max_instances=1,
+        coalesce=True,
+        args=[db, 1]  # 1일 이상 된 작업 정리
+    )
+
+    scheduler.add_job(
+        DataIntegrator.process_all_daily_collections,
+        **SCHEDULE_CONFIGS['test_10'], # hours_8
+        id='process_all_daily_collections',
+        max_instances=1,
+        coalesce=True,
+        args=[db, db, client, PIPELINE_CONFIG]
+    )
+
+    # 2. Worker 작업 스케줄링
+    for job_type, config in PIPELINE_CONFIG.items():
+        if 'worker' not in config:
+            continue
+            
+        worker_config = config['worker']
+        schedule_config = SCHEDULE_CONFIGS[worker_config['schedule']]
+        
+        scheduler.add_job(
+            register_job_with_mongo_cron,
+            trigger=schedule_config['trigger'],
+            coalesce=True,
+            max_instances=1,
+            id=f"worker_{job_type}",
+            args=[
+                client,
+                ip_add,
+                db_name,
+                config['collections']['work'],
+                config['collections']['daily'],
+                worker_config['function'],
+                worker_config['param_field']
+            ],
+            **{k: v for k, v in schedule_config.items() if k != 'trigger'}
+        )
+
+    scheduler.start()
+
+    while True:
+        pass
+
+    return True
+
+
+if __name__ == '__main__':
     '''
     func : 수행할 일 함수
     args : 그 일에 필요한 파라미터 => work 디비에 등록하면, 해당 컬럼만 리스트로 전달
@@ -193,216 +269,132 @@ def run():
     '''
     # 추후 로거 필요하다면 wrapping 해야함
     # 작업 유형별 설정
-    JOBS_CONFIG = {
+    PIPELINE_CONFIG = {
         'yfinance': {
-            'collection': 'COL_STOCKPRICE_DAILY_WORK',
-            'source': {
-                'collection': 'COL_NAS25_KOSPI25_CORPLIST',
-                'symbol_field': 'SYMBOL'
+            # 공통으로 사용할 컬렉션 정의
+            'collections': {
+                'source': 'COL_NAS25_KOSPI25_CORPLIST',      # 작업 생성용 소스 데이터
+                'work': 'COL_STOCKPRICE_DAILY_WORK',  # 작업 큐
+                'daily': 'COL_STOCKPRICE_DAILY',      # 일일 수집 데이터
+                'history': 'COL_STOCKPRICE_EMBEDDED'   # 통합 저장소
             },
-            'batch_size': 20
-        },
-        'toss': {
-            'collection': 'COL_SCRAPPING_TOSS_COMMENT_DAILY_WORK',
-            'source': {
-                'collection': 'COL_NAS25_KOSPI25_CORPLIST',
-                'symbol_field': lambda corp: corp['SYMBOL_KS'] if corp['MARKET'] == 'kospi' else corp['SYMBOL']
-            },
-            'batch_size': 5
-        },
-        'stocktwits': {
-            'collection': 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY_WORK',
-            'source': {
-                'collection': 'COL_NAS25_KOSPI25_CORPLIST',
+            # 아래 collection 주석들은 어떤 collection을 사용한다는 의미 실제 사용되는 코드 아님 
+            # 작업 생성 설정 (Producer)
+            'producer': {
                 'symbol_field': 'SYMBOL',
-                'filter': lambda corp: corp['MARKET'] == 'nasdaq'
+                'batch_size': 20
+                # source_collection: 'COL_NAS25_KOSPI25_CORPLIST'
+                # work_collection: 'COL_STOCKPRICE_DAILY_WORK'
             },
-            'batch_size': 1
-        },
-        'yahoofinance': {
-            'collection': 'COL_YAHOOFINANCE_DAILY_WORK',
-            'count': 10,
-            'batch_size': 1
-        },
-        'hankyung': {
-            'collection': 'COL_SCRAPPING_HANKYUNG_DAILY_WORK',
-            'url_base': 'https://www.hankyung.com/{category}?page={page}',
-            'categories': ['economy', 'financial-market', 'industry', 
-                         'politics', 'society', 'international'],
-            'batch_size': 500
-        },
-        'financial': {
-            'collection': 'COL_FINANCIAL_DAILY_WORK',
-            'source': {
-                'collection': 'COL_FINANCIAL_CORPLIST',
-                'code_field': 'CORP_REGIST_NUM'
+            # 데이터 수집 설정 (Worker)
+            'worker': {
+                'function': api_stockprice_yfinance.get_stockprice_yfinance_daily,
+                'param_field': 'SYMBOL',
+                'schedule': 'test_10' # minutes_10
+                # work_collection: 'COL_STOCKPRICE_DAILY_WORK'
+                # target_collection: 'COL_STOCKPRICE_EMBEDDED_DAILY'
             },
-            'batch_size': 10
-        }
-    }
-
-    # 스케줄 설정을 위한 딕셔너리
-    SCHEDULE_CONFIGS = {
-        'hours_8': {
-            'trigger': 'interval',
-            'hours': 8,
-        },
-        'hours_3': {
-            'trigger': 'interval',
-            'hours': 3,
-        },
-        'minutes_10': {
-            'trigger': 'interval',
-            'minutes': 10,
-        },
-        'test_10': {
-            'trigger': 'interval',
-            'seconds': 10,
-        }
-    }
-
-    client_source = MongoClient(ip_add)
-    source_db = client_source['DB_SGMN']
-
-    client_target = MongoClient(ip_add)
-    target_db = client_target['DB_SGMN']
-
-    JobProducer.register_all_daily_jobs(source_db,target_db,client_target,JOBS_CONFIG)
-
-    scheduler.add_job(JobProducer.register_all_daily_jobs, 
-                      **SCHEDULE_CONFIGS['hours_8'],
-                      id='register_all_daily_jobs', 
-                      max_instances=1, 
-                      coalesce=True, 
-                      args=[source_db,target_db,client_target,JOBS_CONFIG]
-    )
-
-
-    client_man = MongoClient(ip_add)
-    db = client_man['DB_SGMN']
-    days = 1
-    scheduler.add_job(QueueManager.cleanup_work_collections, 
-                      **SCHEDULE_CONFIGS['hours_8'],
-                      id='cleanup_work_collections', 
-                      max_instances=1, 
-                      coalesce=True, 
-                      args=[db, days]
-                      )
-    
-    client_con = MongoClient(ip_add)
-    daily_db = client_con['DB_SGMN']
-    resource_db = client_con['DB_SGMN']
-        
-    # 통합된 컬렉션 설정
-    COLLECTION_CONFIG = {
-        'yfinance': {
-            'source': 'COL_STOCKPRICE_EMBEDDED_DAILY',
-            'target': 'COL_STOCKPRICE_EMBEDDED',
-            'duplicate_fields': ['SYMBOL', 'TIME_DATA.DATE']
+            # 데이터 통합 설정 (Integrator)
+            'integrator': {
+                'duplicate_fields': ['SYMBOL', 'TIME_DATA.DATE']
+                # source_collection: 'COL_STOCKPRICE_EMBEDDED_DAILY'
+                # target_collection: 'COL_STOCKPRICE_EMBEDDED'
+            }
         },
         'toss': {
-            'source': 'COL_SCRAPPING_TOSS_COMMENT_DAILY',
-            'target': 'COL_SCRAPPING_TOSS_COMMENT_HISTORY',
-            'duplicate_fields': ['COMMENT', 'DATETIME']
+            # 공통으로 사용할 컬렉션 정의
+            'collections': {
+                'source': 'COL_NAS25_KOSPI25_CORPLIST',      # 작업 생성용 소스 데이터
+                'work': 'COL_SCRAPPING_TOSS_COMMENT_DAILY_WORK',  # 작업 큐
+                'daily': 'COL_SCRAPPING_TOSS_COMMENT_DAILY',      # 일일 수집 데이터
+                'history': 'COL_SCRAPPING_TOSS_COMMENT_HISTORY'   # 통합 저장소
+            },
+            # 아래 collection 주석들은 어떤 collection을 사용한다는 의미 실제 사용되는 코드 아님 
+            # 작업 생성 설정 (Producer)
+            'producer': {
+                'symbol_field': lambda corp: corp['SYMBOL_KS'] if corp['MARKET'] == 'kospi' else corp['SYMBOL'],
+                'batch_size': 5
+                # source_collection: 'COL_NAS25_KOSPI25_CORPLIST'
+                # work_collection: 'COL_SCRAPPING_TOSS_COMMENT_DAILY_WORK'
+            },
+            # 데이터 수집 설정 (Worker)
+            'worker': {
+                'function': scrap_toss_comment.run_toss_comments,
+                'param_field': 'SYMBOL',
+                'schedule': 'test_10' # minutes_10
+                # work_collection: 'COL_SCRAPPING_TOSS_COMMENT_DAILY_WORK'
+                # target_collection: 'COL_SCRAPPING_TOSS_COMMENT_DAILY'
+            },
+            # 데이터 통합 설정 (Integrator)
+            'integrator': {
+                'duplicate_fields': ['COMMENT', 'DATETIME']
+                # source_collection: 'COL_SCRAPPING_TOSS_COMMENT_DAILY'
+                # target_collection: 'COL_SCRAPPING_TOSS_COMMENT_HISTORY'
+            }
         },
         'stocktwits': {
-            'source': 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY',
-            'target': 'COL_SCRAPPING_STOCKTWITS_COMMENT_HISTORY',
-            'duplicate_fields': ['CONTENT', 'DATETIME']
+            'collections': {
+                'source': 'COL_NAS25_KOSPI25_CORPLIST',
+                'work': 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY_WORK',
+                'daily': 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY',
+                'history': 'COL_SCRAPPING_STOCKTWITS_COMMENT_HISTORY'
+            },
+            'producer': {
+                'symbol_field': 'SYMBOL',
+                'filter': lambda corp: corp['MARKET'] == 'nasdaq',
+                'batch_size': 1
+            },
+            'worker': {
+                'function': comment_scrap_stocktwits.run_stocktwits_scrap_list,
+                'param_field': 'SYMBOL',
+                'schedule': 'test_10' # minutes_10
+            },
+            'integrator': {
+                'duplicate_fields': ['CONTENT', 'DATETIME']
+            }
         },
         'yahoo': {
-            'source': 'COL_SCRAPPING_NEWS_YAHOO_DAILY',
-            'target': 'COL_SCRAPPING_NEWS_YAHOO_HISTORY',
-            'duplicate_fields': ['NEWS_URL']
+            'collections': {
+                'source': '',  # 소스 컬렉션 없음 (직접 실행)
+                'work': '',    # 작업 큐 없음
+                'daily': 'COL_SCRAPPING_NEWS_YAHOO_DAILY',
+                'history': 'COL_SCRAPPING_NEWS_YAHOO_HISTORY'
+            },
+            'producer': {
+                'count': 10,
+                'batch_size': 1
+            },
+            'worker': {
+                'function': yahoo_finance_scrap.scrape_news_schedule_version,
+                'param_field': 'SYMBOL',
+                'schedule': 'test_10' # hours_3
+            },
+            'integrator': {
+                'duplicate_fields': ['NEWS_URL']
+            }
+        },
+        'hankyung': {
+            'collections': {
+                'source': '',  # URL 기반 작업
+                'work': 'COL_SCRAPPING_HANKYUNG_DAILY_WORK',
+                'daily': 'COL_SCRAPPING_HANKYUNG_DAILY',
+                'history': 'COL_SCRAPPING_HANKYUNG_HISTORY'
+            },
+            'producer': {
+                'url_base': 'https://www.hankyung.com/{category}?page={page}',
+                'categories': ['economy', 'financial-market', 'industry', 
+                            'politics', 'society', 'international'],
+                'batch_size': 10
+            },
+            'worker': {
+                'function': bs4_scrapping.bs4_news_hankyung,
+                'param_field': 'URL',
+                'schedule': 'test_10' # hours_3
+            },
+            'integrator': {
+                'duplicate_fields': ['URL']  # 실제 중복 체크 필드 확인 필요
+            }
         }
     }
-
-    scheduler.add_job(DataIntegrator.process_all_daily_collections, 
-                      **SCHEDULE_CONFIGS['hours_8'],
-                      id='process_all_daily_collections', 
-                      max_instances=1, 
-                      coalesce=True, 
-                      args=[daily_db, resource_db, client_con, COLLECTION_CONFIG]
-                      )
-
-    func_list = [
-        { 
-            "func": api_stockprice_yfinance.get_stockprice_yfinance_daily, 
-            "args": "SYMBOL", 
-            "target": 'COL_STOCKPRICE_DAILY', 
-            "work": "COL_STOCKPRICE_DAILY_WORK",
-            "schedule": "minutes_10"
-        },
-        {
-            "func": comment_scrap_stocktwits.run_stocktwits_scrap_list, 
-            "args": "SYMBOL", 
-            "target": 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY', 
-            "work": "COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY_WORK",
-            "schedule": "minutes_10"
-        },
-        {
-            "func": yahoo_finance_scrap.scrape_news_schedule_version, 
-            "args": "SYMBOL", 
-            "target": 'COL_SCRAPPING_NEWS_YAHOO_DAILY', 
-            "work": "",
-            "schedule": "hours_3"
-        },
-        {
-            "func": scrap_toss_comment.run_toss_comments, 
-            "args": "SYMBOL", 
-            "target": 'COL_SCRAPPING_TOSS_COMMENT_DAILY', 
-            "work": "COL_SCRAPPING_TOSS_COMMENT_DAILY_WORK",
-            "schedule": "minutes_10"
-        },
-        {
-            "func": bs4_scrapping.bs4_news_hankyung, 
-            "args": "URL", 
-            "target": 'COL_SCRAPPING_HANKYUNG_DAILY', 
-            "work": "COL_SCRAPPING_HANKYUNG_DAILY_WORK",
-            "schedule": "hours_3"
-        }
-    ]
-
-    for func in func_list:
-        schedule_config = SCHEDULE_CONFIGS[func['schedule']]
-        
-        scheduler.add_job(
-            register_job_with_mongo_cron,                         
-            trigger=schedule_config['trigger'],
-            coalesce=True, 
-            max_instances=1,
-            id=func['func'].__name__,
-            args=[client, ip_add, db_name, func['work'], func['target'], func['func'], func['args']],
-            **{k: v for k, v in schedule_config.items() if k != 'trigger'}
-        )
-    #     '''
-    #     scheduler.add_job(
-    #                 register_job_with_mongo_cron,                         
-    #                 trigger='cron',  # 크론 트리거 사용
-    #                 second='0',      # 매 분의 0초에 실행
-    #                 minute='*',      # 매 분마다 실행
-    #                 hour='*',        # 매 시간마다 실행
-    #                 day='*',         # 매일 실행
-    #                 month='*',       # 매월 실행
-    #                 day_of_week='*', # 매주 실행
-    #                 coalesce=True, 
-    #                 max_instances=1,
-    #                 id=func['func'].__name__,  # 독립적인 함수 이름 주어야 함.
-    #                 args=[client, ip_add, db_name, func['work'], func['target'], func['func'], func['args']]
-    #             )
-        
-    #     '''
-    
-    
-    scheduler.start()
-
-    while True:
-
-        pass
-    
-    return True
-
-
-if __name__ == '__main__':
-    run()
+    run(PIPELINE_CONFIG)
     pass

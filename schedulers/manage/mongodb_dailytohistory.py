@@ -7,7 +7,11 @@ import pytz
 # commons 폴더의 공용 insert 모듈 import
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# 현재 파일의 두 단계 상위 디렉토리(FirstProject)를 path에 추가
+current_dir = os.path.dirname(os.path.abspath(__file__))  # /manage
+parent_dir = os.path.dirname(current_dir)  # /schedulers
+project_dir = os.path.dirname(parent_dir)  # /FirstProject
+sys.path.append(project_dir)
 from commons.mongo_insert_recode import connect_mongo
 
 class DataIntegrator:
@@ -18,17 +22,18 @@ class DataIntegrator:
                                     client: MongoClient, collection_config: Dict):
         """모든 일일 컬렉션 처리"""
         for job_type, config in collection_config.items():
-            print(f"\nProcessing {job_type}: {config['source']} -> {config['target']}")
+            collections = config['collections']
+            print(f"\nProcessing {job_type}: {collections['daily']} -> {collections['history']}")
             
             # 일일 데이터 조회 및 _id 필드 제거
-            daily_data = list(daily_db[config['source']].find({}, {'_id': 0}))
+            daily_data = list(daily_db[collections['daily']].find({}, {'_id': 0}))
             print(f"Found {len(daily_data)} documents in daily collection")
             
             if daily_data:
                 # 데이터 삽입 전 중복 제거
                 unique_data = DataIntegrator.remove_duplicates_from_list(
                     data_list=daily_data, 
-                    duplicate_fields=config.get('duplicate_fields', [])
+                    duplicate_fields=config['integrator']['duplicate_fields']
                 )
                 print(f"Inserting {len(unique_data)} unique documents to resource collection")
                 
@@ -36,13 +41,13 @@ class DataIntegrator:
                 connect_mongo.insert_recode_in_mongo_notime(
                     client=client,
                     dbname=resource_db.name,
-                    collectionname=config['target'],
+                    collectionname=collections['history'],
                     input_list=unique_data
                 )
 
                 # daily 컬렉션 삭제
-                daily_db[config['source']].drop()
-                print(f"Dropped daily collection: {config['source']}")
+                daily_db[collections['daily']].drop()
+                print(f"Dropped daily collection: {collections['daily']}")
 
     @staticmethod
     def remove_duplicates_from_list(data_list: List[Dict], duplicate_fields: List[str]) -> List[Dict]:
@@ -77,26 +82,50 @@ class DataIntegrator:
 
 if __name__ == "__main__":
     # 통합된 컬렉션 설정
-    COLLECTION_CONFIG = {
+    TEST_PIPELINE_CONFIG = {
         'yfinance': {
-            'source': 'COL_STOCKPRICE_EMBEDDED_DAILY',
-            'target': 'COL_STOCKPRICE_EMBEDDED',
-            'duplicate_fields': ['SYMBOL', 'TIME_DATA.DATE']
+            'collections': {
+                'source': 'COL_NAS25_KOSPI25_CORPLIST',
+                'work': 'COL_STOCKPRICE_DAILY_WORK',
+                'daily': 'COL_STOCKPRICE_EMBEDDED_DAILY',
+                'history': 'COL_STOCKPRICE_EMBEDDED'
+            },
+            'integrator': {
+                'duplicate_fields': ['SYMBOL', 'TIME_DATA.DATE']
+            }
         },
         'toss': {
-            'source': 'COL_SCRAPPING_TOSS_COMMENT_DAILY',
-            'target': 'COL_SCRAPPING_TOSS_COMMENT_HISTORY',
-            'duplicate_fields': ['COMMENT', 'DATETIME']
+            'collections': {
+                'source': 'COL_NAS25_KOSPI25_CORPLIST',
+                'work': 'COL_SCRAPPING_TOSS_COMMENT_DAILY_WORK',
+                'daily': 'COL_SCRAPPING_TOSS_COMMENT_DAILY',
+                'history': 'COL_SCRAPPING_TOSS_COMMENT_HISTORY'
+            },
+            'integrator': {
+                'duplicate_fields': ['COMMENT', 'DATETIME']
+            }
         },
         'stocktwits': {
-            'source': 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY',
-            'target': 'COL_SCRAPPING_STOCKTWITS_COMMENT_HISTORY',
-            'duplicate_fields': ['CONTENT', 'DATETIME']
+            'collections': {
+                'source': 'COL_NAS25_KOSPI25_CORPLIST',
+                'work': 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY_WORK',
+                'daily': 'COL_SCRAPPING_STOCKTWITS_COMMENT_DAILY',
+                'history': 'COL_SCRAPPING_STOCKTWITS_COMMENT_HISTORY'
+            },
+            'integrator': {
+                'duplicate_fields': ['CONTENT', 'DATETIME']
+            }
         },
         'yahoo': {
-            'source': 'COL_SCRAPPING_NEWS_YAHOO_DAILY',
-            'target': 'COL_SCRAPPING_NEWS_YAHOO_HISTORY',
-            'duplicate_fields': ['NEWS_URL']
+            'collections': {
+                'source': '',
+                'work': '',
+                'daily': 'COL_SCRAPPING_NEWS_YAHOO_DAILY',
+                'history': 'COL_SCRAPPING_NEWS_YAHOO_HISTORY'
+            },
+            'integrator': {
+                'duplicate_fields': ['NEWS_URL']
+            }
         }
     }
 
@@ -109,5 +138,5 @@ if __name__ == "__main__":
         daily_db=daily_db,
         resource_db=resource_db,
         client=client,
-        collection_config=COLLECTION_CONFIG
+        collection_config=TEST_PIPELINE_CONFIG
     )
