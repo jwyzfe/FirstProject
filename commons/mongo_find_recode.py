@@ -1,85 +1,105 @@
 import pandas as pd
 from datetime import datetime 
+from typing import Optional, Dict, Any
+from pymongo import MongoClient
+from pymongo.cursor import Cursor
 
 class connect_mongo:
 
-    # def insert_recode_in_mongo(client, dbname, collectionname, input_list):
-    #     # 데이터베이스 선택
-    #     db = client[dbname]  
-    #     collection = db[collectionname]
-
-    #     # 현재 시간 기록 => 다른 스케쥴러가 사용하는 시간과 같은지 확인 필요 
-    #     current_time = datetime.now(pytz.timezone('Asia/Seoul'))
-
-    #     try:
-    #         # 딕셔너리 리스트 처리
-    #         if isinstance(input_list, list): 
-    #             for record in input_list:
-    #                 record['created_at'] = current_time  
-    #             results = collection.insert_many(input_list)
-
-    #         # 단일 DataFrame 처리
-    #         elif isinstance(input_list, pd.DataFrame):
-    #             df_with_date = input_list.reset_index() # 일단 둠 더 생각 해보기 
-    #             records = df_with_date.to_dict(orient='records')
-    #             for record in records:
-    #                 record['created_at'] = current_time
-    #             results = collection.insert_many(records)
-    #             return results
-
-    #         # 단일 딕셔너리 처리
-    #         elif isinstance(input_list, dict):
-    #             input_list['created_at'] = current_time
-    #             results = collection.insert_one(input_list)
-    #             return results
-
-    #         else:
-    #             print("Error: Unsupported input type. Expected DataFrame list, DataFrame, or dict")
-    #             return None
-
-    #     except Exception as e:
-    #         print(f"Error during MongoDB insertion: {str(e)}")
-    #         return None
-        
-    # 모든 레코드 읽어오기
     @classmethod
-    def get_records_cursor(cls, client, dbname, collectionname, find_key=None):
-        
-        # 데이터베이스 선택
+    def get_records_cursor(
+        cls,
+        client: MongoClient,
+        dbname: str,
+        collectionname: str,
+        find_key: Optional[Dict] = None
+    ) -> Cursor:
+        """MongoDB 컬렉션에서 모든 레코드를 커서 형태로 반환
+
+        Args:
+            client (MongoClient): MongoDB 클라이언트
+            dbname (str): 데이터베이스 이름
+            collectionname (str): 컬렉션 이름
+            find_key (Optional[Dict], optional): 검색 조건. Defaults to None.
+
+        Returns:
+            Cursor: MongoDB 커서 객체
+
+        Raises:
+            Exception: MongoDB 쿼리 실행 중 오류 발생
+        """
         db = client[dbname]  
         collection = db[collectionname]
         try:
-            records_cursor = collection.find()   # 모든 레코드 가져오기
+            records_cursor = collection.find()
         except Exception as e:
             print(f"Error reading records: {e}")
-            # client.close()  # 클라이언트 연결 종료
+            raise
 
         return records_cursor
         
-    # 모든 레코드 읽어오기
     @classmethod
-    def get_records_dataframe(cls, client, dbname, collectionname, find_key=None):
-        
-        # 데이터베이스 선택
+    def get_records_dataframe(
+        cls,
+        client: MongoClient,
+        dbname: str,
+        collectionname: str,
+        find_key: Optional[Dict] = None
+    ) -> pd.DataFrame:
+        """MongoDB 컬렉션에서 레코드를 DataFrame 형태로 반환
+
+        Args:
+            client (MongoClient): MongoDB 클라이언트
+            dbname (str): 데이터베이스 이름
+            collectionname (str): 컬렉션 이름
+            find_key (Optional[Dict], optional): 검색 조건. Defaults to None.
+
+        Returns:
+            pd.DataFrame: 검색된 레코드를 포함하는 DataFrame
+                - 빈 결과의 경우 빈 DataFrame 반환
+
+        Raises:
+            Exception: MongoDB 쿼리 실행 중 오류 발생
+        """
         db = client[dbname]  
         collection = db[collectionname]
         try:
             if find_key is None:
-                # find_key가 없으면 모든 레코드 가져오기
                 records_df = pd.DataFrame(list(collection.find()))
             else:
-                # find_key가 있으면 해당 조건으로 필터링하여 가져오기
                 records_df = pd.DataFrame(list(collection.find(find_key)))
             
         except Exception as e:
             print(f"Error reading records: {e}")
-            # client.close()  # 클라이언트 연결 종료
+            raise
 
         return records_df
 
     @classmethod
-    def get_unfinished_ready_records(cls, client, db_name, col_name):
-        # 1. 먼저 완료된(fin) 레코드들의 ref_id 목록을 가져옵니다
+    def get_unfinished_ready_records(
+        cls,
+        client: MongoClient,
+        db_name: str,
+        col_name: str
+    ) -> pd.DataFrame:
+        """완료되지 않은 ready 상태의 레코드를 반환
+
+        Args:
+            client (MongoClient): MongoDB 클라이언트
+            db_name (str): 데이터베이스 이름
+            col_name (str): 컬렉션 이름
+
+        Returns:
+            pd.DataFrame: 미완료 ready 상태 레코드를 포함하는 DataFrame
+                - ISWORK가 'ready'이면서
+                - 완료된(ISWORK='fin') 레코드의 REF_ID에 포함되지 않는 레코드들
+                - 결과가 없는 경우 빈 DataFrame 반환
+
+        Note:
+            - 완료된 레코드는 ISWORK='fin' 상태를 가짐
+            - REF_ID는 작업 참조 ID로 사용됨
+        """
+        # 1. 완료된(fin) 레코드들의 ref_id 목록 조회
         finished_records = cls.get_records_dataframe(
             client, 
             db_name, 
@@ -88,7 +108,7 @@ class connect_mongo:
         )
         finished_ref_ids = [] if finished_records.empty else finished_records['REF_ID'].tolist()
 
-        # 2. ready 상태이면서 아직 완료되지 않은(ref_id가 finished_ref_ids에 없는) 레코드를 찾습니다
+        # 2. ready 상태이면서 미완료된 레코드 조회
         ready_records = cls.get_records_dataframe(
             client, 
             db_name, 
@@ -97,9 +117,7 @@ class connect_mongo:
         )
         
         if not ready_records.empty:
-            # finished_ref_ids에 없는 _id를 가진 레코드만 필터링
             unfinished_records = ready_records[~ready_records['_id'].isin(finished_ref_ids)]
             return unfinished_records
         
-        return pd.DataFrame()  
-    
+        return pd.DataFrame()
