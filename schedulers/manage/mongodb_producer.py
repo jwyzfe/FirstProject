@@ -17,49 +17,96 @@ class JobProducer:
 
     @staticmethod
     def register_all_daily_jobs(source_db: Database, target_db: Database, client: MongoClient, jobs_config: Dict):
-        """모든 일일 작업 등록 (단순화된 버전)"""
+        """모든 일일 작업 등록
+
+        Args:
+            source_db (Database): 소스 데이터 데이터베이스
+            target_db (Database): 작업 큐 데이터베이스
+            client (MongoClient): MongoDB 클라이언트
+            jobs_config (Dict): 작업 설정 정보
+
+        Note:
+            작업 유형별로 다음과 같이 처리:
+            1. 소스 컬렉션 기반 작업 (yfinance, toss, stocktwits)
+            2. URL 기반 작업 (hankyung)
+            3. 반복 작업 (yahoo)
+        """
         for job_type, config in jobs_config.items():
-            print(f"{job_type} 작업 등록 중...")
+            print(f"\n{job_type} 작업 등록 중...")
             
-            if 'source' in config:
-                # 소스 데이터 기반 작업 (yfinance, toss, stocktwits, financial)
-                source_data = list(source_db[config['source']['collection']].find())
+            if config['collections']['source']:  # 소스 컬렉션이 있는 경우
+                # 소스 데이터 조회
+                source_data = list(source_db[config['collections']['source']].find())
                 
-                if 'filter' in config['source']:
-                    source_data = list(filter(config['source']['filter'], source_data))
+                # 필터 적용 (있는 경우)
+                if 'filter' in config['producer']:
+                    source_data = list(filter(config['producer']['filter'], source_data))
                 
+                # 배치 크기 설정
+                batch_size = config['producer'].get('batch_size', len(source_data))
+                source_data = source_data[:batch_size]
+                
+                # 작업 데이터 생성 및 등록
                 for item in source_data:
                     job_data = {}
                     
-                    if 'symbol_field' in config['source']:
-                        symbol_key = config['source']['symbol_field']
-                        job_data['symbol'] = symbol_key(item) if callable(symbol_key) else item[symbol_key]
+                    # symbol 필드 처리
+                    if 'symbol_field' in config['producer']:
+                        symbol_key = config['producer']['symbol_field']
+                        job_data['SYMBOL'] = symbol_key(item) if callable(symbol_key) else item[symbol_key]
                     
-                    if 'code_field' in config['source']:
-                        job_data['registcode'] = item[config['source']['code_field']]
-                    
-                    JobProducer._insert_job(target_db, config['collection'], job_data, client)
+                    JobProducer._insert_job(
+                        target_db, 
+                        config['collections']['work'],
+                        job_data, 
+                        client
+                    )
             
-            elif 'url_base' in config:
-                # URL 기반 작업 (hankyung)
-                for category in config['categories']:
-                    for page in range(1, config['batch_size'] + 1):
-                        url = config['url_base'].format(category=category, page=page)
-                        JobProducer._insert_job(target_db, config['collection'], {'url': url}, client)
+            # URL 기반 작업 (hankyung)
+            elif 'url_base' in config['producer']:
+                for category in config['producer']['categories']:
+                    for page in range(1, config['producer']['batch_size'] + 1):
+                        url = config['producer']['url_base'].format(
+                            category=category, 
+                            page=page
+                        )
+                        JobProducer._insert_job(
+                            target_db,
+                            config['collections']['work'],
+                            {'URL': url},
+                            client
+                        )
             
-            elif 'count' in config:
-                # 반복 작업 (yahoofinance)
-                for _ in range(config['count']):
-                    JobProducer._insert_job(target_db, config['collection'], {}, client)
+            # 반복 작업 (yahoo)
+            elif 'count' in config['producer']:
+                for _ in range(config['producer']['count']):
+                    JobProducer._insert_job(
+                        target_db,
+                        config['collections']['work'],
+                        {},
+                        client
+                    )
+            
+            print(f"{job_type} 작업 등록 완료")
 
     @staticmethod
-    def _insert_job(target_db: Database, collection: str, job_data: Dict, client: MongoClient):
-        """작업 데이터 삽입"""
+    def _insert_job(db: Database, collection_name: str, job_data: Dict, client: MongoClient):
+        """작업을 작업 큐에 등록
+
+        Args:
+            db (Database): 작업 큐 데이터베이스
+            collection_name (str): 작업 큐 컬렉션 이름
+            job_data (Dict): 작업 데이터
+            client (MongoClient): MongoDB 클라이언트
+        """
+        if not collection_name:  # 빈 문자열이면 건너뛰기
+            return
+            
         job_data['ISWORK'] = 'ready'
         connect_mongo.insert_recode_in_mongo(
             client=client,
-            dbname=target_db.name,
-            collectionname=collection,
+            dbname=db.name,
+            collectionname=collection_name,
             input_list=job_data
         )
 
