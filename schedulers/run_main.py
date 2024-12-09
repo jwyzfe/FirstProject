@@ -7,6 +7,7 @@ from pymongo import MongoClient
 import time
 # 
 import pandas as pd
+from typing import Optional, Dict, Any, List, Union
 
 # # selenium driver 
 # from selenium import webdriver
@@ -38,53 +39,6 @@ from manage.mongodb_queuemanager import QueueManager
 from manage.mongodb_dailytohistory import DataIntegrator
 
 
-# common 에 넣을 예정
-def register_job_with_mongo(client, ip_add, db_name, col_name_work, col_name_dest, func, insert_data):
-
-    try:
-        if client is None:
-            client = MongoClient(ip_add)
-        symbols = connect_mongo_find.get_unfinished_ready_records(client, db_name, col_name_work)
-          
-        # symbols가 비어있는지 확인
-        if symbols.empty:
-            print("zero recode. skip schedule")
-            return
-        
-        # 60개씩 제한 # 40 
-        BATCH_SIZE = 20
-        symbols_batch = symbols.head(BATCH_SIZE)  # 처음 60개만 선택
-        
-        # symbol 컬럼만 리스트로 변환 => 추후 더 조치 필요 
-        symbol_list = symbols_batch[insert_data].tolist()
-
-        # 선택된 symbol 처리
-        result_data = func(symbol_list)
-        if client is None:
-            client = MongoClient(ip_add)
-        result_list = connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name_dest, result_data)
-    
-        # 처리된 60개의 symbol에 대해서만 상태 업데이트
-        update_data_list = []
-        for _, row in symbols_batch.iterrows():
-            update_data = {
-                'REF_ID': row['_id'],  # 원본 레코드의 ID를 참조 ID로 저장
-                'ISWORK': 'fin',
-                insert_data : row[insert_data]
-            }
-            update_data_list.append(update_data)
-
-        if client is None:
-            client = MongoClient(ip_add)
-        result_list = connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name_work, update_data_list)
-
-    except Exception as e:
-        print(e)
-        # client.close()
-
-    return 
-
-
 def update_job_status(client, db_name, col_name_work, symbols_batch, status, insert_data):
     """
     처리된 symbol에 대한 상태 업데이트를 수행하는 함수
@@ -110,8 +64,33 @@ def update_job_status(client, db_name, col_name_work, symbols_batch, status, ins
     return result_list
 
 
-# common 에 넣을 예정
-def register_job_with_mongo_cron(client, ip_add, db_name, col_name_work, col_name_dest, func, insert_data):
+def register_job_with_mongo_cron(
+    client: MongoClient,
+    ip_add: str,
+    db_name: str,
+    col_name_work: str,
+    col_name_dest: str,
+    func: callable,
+    insert_data: str
+) -> None:
+    """작업을 MongoDB에 등록하고 실행하는 크론 작업 핸들러
+
+    Args:
+        client (MongoClient): MongoDB 클라이언트
+        ip_add (str): MongoDB 서버 주소
+        db_name (str): 데이터베이스 이름
+        col_name_work (str): 작업 큐 컬렉션 이름 (빈 문자열 가능)
+        col_name_dest (str): 결과 저장 컬렉션 이름
+        func (callable): 실행할 함수
+        insert_data (str): 데이터 삽입 시 사용할 필드명
+
+    Note:
+        - col_name_work가 빈 문자열('')인 경우:
+            - func를 직접 실행하고 결과를 col_name_dest에 저장
+        - col_name_work가 존재하는 경우:
+            - 미완료 작업을 배치 단위로 처리
+            - 작업 상태 업데이트 ('working' -> 'fin')
+    """
     try:
         if client is None:
             client = MongoClient(ip_add)
@@ -158,7 +137,19 @@ def register_job_with_mongo_cron(client, ip_add, db_name, col_name_work, col_nam
     return
 
 
-def run(PIPELINE_CONFIG):
+def run(PIPELINE_CONFIG: Dict[str, Dict[str, Any]]) -> bool:
+    """스케줄러 메인 실행 함수
+
+    Args:
+        PIPELINE_CONFIG (Dict[str, Dict[str, Any]]): 파이프라인 설정
+            - collections: 사용할 컬렉션 정보
+            - producer: 작업 생성 설정
+            - worker: 작업 실행 설정
+            - integrator: 데이터 통합 설정
+
+    Returns:
+        bool: 실행 성공 여부
+    """
     # 기본 설정
     config = read_config()
     ip_add = config['MongoDB_remote_readonly']['ip_add']
@@ -256,21 +247,31 @@ def run(PIPELINE_CONFIG):
 
 
 if __name__ == '__main__':
-    '''
-    func : 수행할 일 함수
-    args : 그 일에 필요한 파라미터 => work 디비에 등록하면, 해당 컬럼만 리스트로 전달
-    target : 최종 저장할 데이터 베이스 컬렉션 이름 
-    work : 일 시킬 내용 들어있는 데이터 베이스 컬렉션 이름
 
-    '''
-    '''
-    함수별 필요 파라미터를 생각해보자
-    symbol 인데 어떤 심볼인지 market 코드 붙은 건지 안붙은 건지 고를 수 있어야 함.
-    batch 사이즈도 달라져야함. 각 스케쥴 마다 소요시간이 다르기 때문
-    input db랑 target db를 알아야함.
-    non 파라미터 경우 ? 
-    시간을 받아서 처리해야 하는 경우도 있음. 
-    '''
+
+    PIPELINE_CONFIG_SCHEMA = {
+        'job_type': {  # e.g., 'yfinance', 'toss', etc.
+            'collections': {
+                'source': str,     # 작업 생성용 소스 데이터 컬렉션
+                'work': str,       # 작업 큐 컬렉션
+                'daily': str,      # 일일 수집 데이터 컬렉션
+                'history': str     # 통합 저장소 컬렉션
+            },
+            'producer': {
+                'symbol_field': Union[str, callable],  # 심볼 필드 또는 변환 함수
+                'batch_size': int,                     # 배치 크기
+                'filter': Optional[callable]           # 선택적 필터링 함수
+            },
+            'worker': {
+                'function': callable,    # 실행할 작업 함수
+                'param_field': str,      # 파라미터 필드명
+                'schedule': str          # 스케줄 설정 ('minutes_10', 'hours_3', etc.)
+            },
+            'integrator': {
+                'duplicate_fields': List[str]  # 중복 체크할 필드 목록
+            }
+        }
+    }
     # 추후 로거 필요하다면 wrapping 해야함
     # 작업 유형별 설정
     PIPELINE_CONFIG = {
