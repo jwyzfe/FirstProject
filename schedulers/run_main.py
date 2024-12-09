@@ -161,8 +161,8 @@ def register_job_with_mongo_cron(client, ip_add, db_name, col_name_work, col_nam
 def run(PIPELINE_CONFIG):
     # 기본 설정
     config = read_config()
-    ip_add = config['MongoDB_remote_readonly']['ip_add']
-    db_name = config['MongoDB_remote_readonly']['db_name']
+    ip_add = config['MongoDB_remote']['ip_add']
+    db_name = config['MongoDB_remote']['db_name']
     client = MongoClient(ip_add)
     db = client[db_name]
     
