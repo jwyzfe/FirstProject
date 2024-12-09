@@ -1,7 +1,11 @@
-# main에서 다른 폴더 경로 참조하려면 필요
+# commons 폴더의 공용 insert 모듈 import
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# 현재 파일의 두 단계 상위 디렉토리(FirstProject)를 path에 추가
+current_dir = os.path.dirname(os.path.abspath(__file__))  # /manage
+parent_dir = os.path.dirname(current_dir)  # /schedulers
+project_dir = os.path.dirname(parent_dir)  # /FirstProject
+sys.path.append(project_dir)
 
 # 직접 만든 class    
 from commons.config_reader import read_config # config read 용       
@@ -158,8 +162,31 @@ def test_yfinance_func():
         
         connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name, pd.DataFrame(update_data_list))
 
+def test_list_yfinance_func(symbols):
+    config = read_config()
+    ip_add = config['MongoDB_remote']['ip_add']
+    db_name = config['MongoDB_remote']['db_name']
+    col_name = f'COL_STOCKPRICE_WORK'
+
+    # MongoDB 서버에 연결 
+    client = MongoClient(ip_add)
+
+    #symbols = connect_mongo_find.get_records_dataframe(client, db_name, col_name)
+    symbol_list = symbols
+
+    result_list = api_stockprice_yfinance.get_stockprice_yfinance_daily(symbol_list)
+
+    if not result_list.empty:
+        # 히스토리 데이터 저장
+        col_name = f'COL_STOCKPRICE_EMBEDDED'
+        connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name, result_list)
+
+
 if __name__ == '__main__':
-    symbols = ["NVDA", "AAPL", "MSFT", "INVALID_SYMBOL", "AMZN", "META", "AVGO", 
-              "GOOGL", "TSLA", "GOOG", "BRK.B", '005930.KS', "010950.ks"]
-    df_testprint = api_stockprice_yfinance.get_stockprice_yfinance_daily(symbols)
-    print(df_testprint)
+    # symbols = ["NVDA", "AAPL", "MSFT", "INVALID_SYMBOL", "AMZN", "META", "AVGO", 
+    #           "GOOGL", "TSLA", "GOOG", "BRK.B", '005930.KS', "010950.ks"]
+    # df_testprint = api_stockprice_yfinance.get_stockprice_yfinance_daily(symbols)
+    # print(df_testprint)
+
+    symbols = ["096775.KS", '005930.KS', "196170.KQ"]
+    test_list_yfinance_func(symbols)
