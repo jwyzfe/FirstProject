@@ -254,7 +254,7 @@ def test_yfinance_func():
     
     # 새로운 레코드로 삽입
     connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name, pd.DataFrame(update_data_list))
-
+    
     pass
 
 if __name__ == '__main__':
