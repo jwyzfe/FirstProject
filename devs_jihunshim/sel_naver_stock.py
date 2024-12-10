@@ -136,7 +136,7 @@ if __name__=='__main__':
     # 스케쥴러 등록 
     # mongodb 가져올 수 있도록
     # ip_add = f'mongodb://192.168.0.50:27017/'
-    ip_add = f'mongodb://192.168.0.135:27017/'
+    ip_add = f'mongodb://192.168.0.91:27017/'
     db_name = f'DB_SGMN' # db name 바꾸기
     col_name = f'COL_NAVER_STOCK_REPLY' # collection name 바꾸기
     
