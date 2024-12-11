@@ -161,6 +161,11 @@ def run(PIPELINE_CONFIG: Dict[str, Dict[str, Any]]) -> bool:
 
     # 스케줄 설정
     SCHEDULE_CONFIGS = {
+        'cron_8_16_24': {
+            'trigger': 'cron',
+            'hour': '8,16,0',
+            'minute': 0,
+        },
         'hours_8': {
             'trigger': 'interval',
             'hours': 8,
@@ -189,7 +194,7 @@ def run(PIPELINE_CONFIG: Dict[str, Dict[str, Any]]) -> bool:
     # 1. 관리 작업 스케줄링 (Producer, QueueManager, Integrator)
     scheduler.add_job(
         JobProducer.register_all_daily_jobs,
-        **SCHEDULE_CONFIGS['test_10'], # hours_8
+        **SCHEDULE_CONFIGS['cron_8_16_24'], # hours_8
         id='register_all_daily_jobs',
         max_instances=1,
         coalesce=True,
@@ -198,7 +203,7 @@ def run(PIPELINE_CONFIG: Dict[str, Dict[str, Any]]) -> bool:
 
     scheduler.add_job(
         QueueManager.cleanup_work_collections,
-        **SCHEDULE_CONFIGS['test_10'], # hours_8
+        **SCHEDULE_CONFIGS['cron_8_16_24'], # hours_8
         id='cleanup_work_collections',
         max_instances=1,
         coalesce=True,
@@ -207,7 +212,7 @@ def run(PIPELINE_CONFIG: Dict[str, Dict[str, Any]]) -> bool:
 
     scheduler.add_job(
         DataIntegrator.process_all_daily_collections,
-        **SCHEDULE_CONFIGS['test_10'], # hours_8
+        **SCHEDULE_CONFIGS['cron_8_16_24'], # hours_8
         id='process_all_daily_collections',
         max_instances=1,
         coalesce=True,
@@ -297,7 +302,7 @@ if __name__ == '__main__':
             'worker': {
                 'function': api_stockprice_yfinance.get_stockprice_yfinance_daily,
                 'param_field': 'SYMBOL',
-                'schedule': 'test_10' # minutes_10
+                'schedule': 'minutes_10' # minutes_10
                 # work_collection: 'COL_STOCKPRICE_DAILY_WORK'
                 # target_collection: 'COL_STOCKPRICE_EMBEDDED_DAILY'
             },
@@ -328,7 +333,7 @@ if __name__ == '__main__':
             'worker': {
                 'function': scrap_toss_comment.run_toss_comments,
                 'param_field': 'SYMBOL',
-                'schedule': 'test_10' # minutes_10
+                'schedule': 'minutes_10' # minutes_10
                 # work_collection: 'COL_SCRAPPING_TOSS_COMMENT_DAILY_WORK'
                 # target_collection: 'COL_SCRAPPING_TOSS_COMMENT_DAILY'
             },
@@ -380,12 +385,12 @@ if __name__ == '__main__':
             'producer': {
                 'symbol_field': 'SYMBOL',
                 'filter': lambda corp: corp['MARKET'] == 'nasdaq',
-                'batch_size': 1
+                'batch_size': 3 # 1 
             },
             'worker': {
                 'function': comment_scrap_stocktwits.run_stocktwits_scrap_list,
                 'param_field': 'SYMBOL',
-                'schedule': 'test_10' # minutes_10
+                'schedule': 'minutes_10' # minutes_10
             },
             'integrator': {
                 'duplicate_fields': ['CONTENT', 'DATETIME']
@@ -405,7 +410,7 @@ if __name__ == '__main__':
             'worker': {
                 'function': yahoo_finance_scrap.scrape_news_schedule_version,
                 'param_field': 'SYMBOL',
-                'schedule': 'test_10' # hours_3
+                'schedule': 'hours_3' # hours_3
             },
             'integrator': {
                 'duplicate_fields': ['NEWS_URL']
@@ -427,7 +432,7 @@ if __name__ == '__main__':
             'worker': {
                 'function': bs4_scrapping.bs4_news_hankyung,
                 'param_field': 'URL',
-                'schedule': 'test_10' # hours_3
+                'schedule': 'hours_3' # hours_3
             },
             'integrator': {
                 'duplicate_fields': ['URL']  # 실제 중복 체크 필드 확인 필요

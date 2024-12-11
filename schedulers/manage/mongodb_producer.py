@@ -43,8 +43,8 @@ class JobProducer:
                     source_data = list(filter(config['producer']['filter'], source_data))
                 
                 # 배치 크기 설정
-                batch_size = config['producer'].get('batch_size', len(source_data))
-                source_data = source_data[:batch_size]
+                # batch_size = config['producer'].get('batch_size', len(source_data))
+                # source_data = source_data[:batch_size]
                 
                 # 작업 데이터 생성 및 등록
                 for item in source_data:
