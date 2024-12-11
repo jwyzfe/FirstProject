@@ -29,7 +29,6 @@ from commons.mongo_find_recode import connect_mongo as connect_mongo_find
 # 직접 구현한 부분을 import 해서 scheduler에 등록
 from devs_shlee.release.api_stockprice_yfinance_update import api_stockprice_yfinance 
 from devs_shlee.release.sel_comment_scrap_stocktwits import comment_scrap_stocktwits 
-from devs_shlee.api_kosis_func import KosisApiHandler 
 from devs_oz.release.MarketSenti_yf import calc_market_senti
 from devs_oz.release.news_scrapping_yahoo_headless import yahoo_finance_scrap
 from devs_jihunshim.release.bs4_news_hankyung import bs4_scrapping
@@ -73,70 +72,71 @@ def register_job_with_mongo_cron(
     col_name_work: str,
     col_name_dest: str,
     func: callable,
-    param_field: str,
-    config: dict = None
+    insert_data: str
 ) -> None:
+    """작업을 MongoDB에 등록하고 실행하는 크론 작업 핸들러
+
+    Args:
+        client (MongoClient): MongoDB 클라이언트
+        ip_add (str): MongoDB 서버 주소
+        db_name (str): 데이터베이스 이름
+        col_name_work (str): 작업 큐 컬렉션 이름 (빈 문자열 가능)
+        col_name_dest (str): 결과 저장 컬렉션 이름
+        func (callable): 실행할 함수
+        insert_data (str): 데이터 삽입 시 사용할 필드명
+
+    Note:
+        - col_name_work가 빈 문자열('')인 경우:
+            - func를 직접 실행하고 결과를 col_name_dest에 저장
+        - col_name_work가 존재하는 경우:
+            - 미완료 작업을 배치 단위로 처리
+            - 작업 상태 업데이트 ('working' -> 'fin')
+    """
     try:
         if client is None:
             client = MongoClient(ip_add)
 
-        # KOSIS API이고 work collection이 없는 경우
-        if config and 'kosis' in config and not col_name_work:
-            # index_settings 전체를 전달하여 한번에 처리
-            index_settings = config['kosis']['producer']['index_settings']
-            result_data = func(index_settings)
-            
-            # 각 API 결과를 해당 컬렉션에 저장
-            for api_name, data in result_data.items():
-                target_collection = index_settings[api_name]['target_collection']
-                if data:
-                    print(f"fin : func for {api_name}")
-                    connect_mongo_insert.insert_recode_in_mongo(
-                        client, 
-                        db_name, 
-                        target_collection,
-                        data
-                    )
-                    print(f"fin : insert data for {api_name}")
+        # col_name_work가 None인지 확인
+        if col_name_work == '':
+            # col_name_work가 None인 경우
+            result_data = func()  # func() 호출
+            print("fin : func")
+            result_list = connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name_dest, result_data)
+            print("fin : insert data ")
         else:
-            # 기존 API 처리 로직
-            if col_name_work == '':
-                # 직접 실행하는 경우
-                result_data = func()
-                print("fin : func")
-                connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name_dest, result_data)
-                print("fin : insert data")
-            else:
-                # work collection 기반 처리
-                symbols = connect_mongo_find.get_unfinished_ready_records(client, db_name, col_name_work)
-                
-                if symbols.empty:
-                    print("zero record. skip schedule")
-                    return
-                
-                BATCH_SIZE = 1
-                symbols_batch = symbols.head(BATCH_SIZE)
-                param_values = symbols_batch[param_field].tolist()
+            # col_name_work가 None이 아닌 경우
+            symbols = connect_mongo_find.get_unfinished_ready_records(client, db_name, col_name_work)
+            
+            # symbols가 비어있는지 확인
+            if symbols.empty:
+                print("zero record. skip schedule")
+                return
+            
+            ## 파라미터 처리 해야 되는 부분 
+            # 20개씩 제한
+            BATCH_SIZE = 1
+            symbols_batch = symbols.head(BATCH_SIZE)  # 처음 20개만 선택
+            
+            # symbol 컬럼만 리스트로 변환
+            symbol_list = symbols_batch[insert_data].tolist()
 
-                # for param_value in param_values:
-                result_data = func(param_values)
-                
-                print(f"fin : func")
-                connect_mongo_insert.insert_recode_in_mongo(
-                    client, 
-                    db_name, 
-                    col_name_dest,
-                    result_data
-                )
-                print(f"fin : insert data ")
+            # result_list = update_job_status(client, db_name, col_name_work, symbols_batch, 'working', insert_data)
 
-                update_job_status(client, db_name, col_name_work, symbols_batch, 'fin', param_field)
-                
+            # 선택된 symbol 처리
+            result_data = func(symbol_list)
+
+            print("fin : func")
+            result_list = connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name_dest, result_data)
+            print("fin : insert data ")
+        
+            result_list = update_job_status(client, db_name, col_name_work, symbols_batch, 'fin', insert_data)
+            
     except Exception as e:
-        print(f"Error in register_job_with_mongo_cron: {e}")
-        raise
+        print(e)
+        # client.close()  # 필요 시 클라이언트 닫기
 
     return
+
 
 def run(PIPELINE_CONFIG: Dict[str, Dict[str, Any]]) -> bool:
     """스케줄러 메인 실행 함수
@@ -190,12 +190,12 @@ def run(PIPELINE_CONFIG: Dict[str, Dict[str, Any]]) -> bool:
         }
     }
 
-    # JobProducer.register_all_daily_jobs(db, db, client, PIPELINE_CONFIG)
+    JobProducer.register_all_daily_jobs(db, db, client, PIPELINE_CONFIG)
 
     # 1. 관리 작업 스케줄링 (Producer, QueueManager, Integrator)
     scheduler.add_job(
         JobProducer.register_all_daily_jobs,
-        **SCHEDULE_CONFIGS['test_10'], # hours_8
+        **SCHEDULE_CONFIGS['cron_8_16_24'], # hours_8
         id='register_all_daily_jobs',
         max_instances=1,
         coalesce=True,
@@ -204,7 +204,7 @@ def run(PIPELINE_CONFIG: Dict[str, Dict[str, Any]]) -> bool:
 
     scheduler.add_job(
         QueueManager.cleanup_work_collections,
-        **SCHEDULE_CONFIGS['test_10'], # hours_8
+        **SCHEDULE_CONFIGS['cron_8_16_24'], # hours_8
         id='cleanup_work_collections',
         max_instances=1,
         coalesce=True,
@@ -213,7 +213,7 @@ def run(PIPELINE_CONFIG: Dict[str, Dict[str, Any]]) -> bool:
 
     scheduler.add_job(
         DataIntegrator.process_all_daily_collections,
-        **SCHEDULE_CONFIGS['test_10'], # hours_8
+        **SCHEDULE_CONFIGS['cron_8_16_24'], # hours_8
         id='process_all_daily_collections',
         max_instances=1,
         coalesce=True,
@@ -228,27 +228,21 @@ def run(PIPELINE_CONFIG: Dict[str, Dict[str, Any]]) -> bool:
         worker_config = config['worker']
         schedule_config = SCHEDULE_CONFIGS[worker_config['schedule']]
         
-        args = [
-            client,
-            ip_add,
-            db_name,
-            config['collections']['work'],
-            config['collections'].get('daily', ''),  # daily가 없을 수 있음
-            worker_config['function'],
-            worker_config['param_field']
-        ]
-
-        # KOSIS API의 경우 config 추가
-        if job_type == 'kosis':
-            args.append(PIPELINE_CONFIG)
-        
         scheduler.add_job(
             register_job_with_mongo_cron,
             trigger=schedule_config['trigger'],
             coalesce=True,
             max_instances=1,
             id=f"worker_{job_type}",
-            args=args,
+            args=[
+                client,
+                ip_add,
+                db_name,
+                config['collections']['work'],
+                config['collections']['daily'],
+                worker_config['function'],
+                worker_config['param_field']
+            ],
             **{k: v for k, v in schedule_config.items() if k != 'trigger'}
         )
 
@@ -268,7 +262,7 @@ if __name__ == '__main__':
             'collections': {
                 'source': str,     # 작업 생성용 소스 데이터 컬렉션
                 'work': str,       # 작업 큐 컬렉션
-                'daily': str,      # 일일 수집 데이터 컬렉션 target이 더 자연스러움
+                'daily': str,      # 일일 수집 데이터 컬렉션
                 'history': str     # 통합 저장소 컬렉션
             },
             'producer': {
@@ -294,7 +288,7 @@ if __name__ == '__main__':
             'collections': {
                 'source': 'COL_NAS25_KOSPI25_CORPLIST',      # 작업 생성용 소스 데이터
                 'work': 'COL_STOCKPRICE_DAILY_WORK',  # 작업 큐
-                'daily': 'COL_STOCKPRICE_DAILY',      # 일일 수집 데이터 target이 더 자연스러움
+                'daily': 'COL_STOCKPRICE_DAILY',      # 일일 수집 데이터
                 'history': 'COL_STOCKPRICE_EMBEDDED'   # 통합 저장소
             },
             # 아래 collection 주석들은 어떤 collection을 사용한다는 의미 실제 사용되는 코드 아님 
@@ -309,7 +303,7 @@ if __name__ == '__main__':
             'worker': {
                 'function': api_stockprice_yfinance.get_stockprice_yfinance_daily,
                 'param_field': 'SYMBOL',
-                'schedule': 'test_10' # minutes_10
+                'schedule': 'minutes_10' # minutes_10
                 # work_collection: 'COL_STOCKPRICE_DAILY_WORK'
                 # target_collection: 'COL_STOCKPRICE_EMBEDDED_DAILY'
             },
@@ -318,39 +312,6 @@ if __name__ == '__main__':
                 'duplicate_fields': ['SYMBOL', 'TIME_DATA.DATE']
                 # source_collection: 'COL_STOCKPRICE_EMBEDDED_DAILY'
                 # target_collection: 'COL_STOCKPRICE_EMBEDDED'
-            }
-        },
-        'kosis': {
-            'collections': {
-                'source': '',
-                'work': '',
-                'daily': ''
-            },
-            'producer': {
-                'index_settings': {  # API 파라미터를 위한 추가 설정
-                    "Composite_Economic_Index": {
-                        "itmId": "T1",
-                        "orgId": 101,
-                        "tblId": "DT_1C8015",
-                        "objL1": "ALL",
-                        "objL2": "",
-                        "startPrdDe": "197001",
-                        "target_collection": "COL_KOSIS_COMPOSIT_ECONOMIC_INDEX_HISTORY"
-                    },
-                    "Economic_Sentiment_Index": {
-                        "itmId": "13103134473999",
-                        "orgId": 301,
-                        "tblId": "DT_513Y001",
-                        "objL1": "ALL",
-                        "startPrdDe": "200301",
-                        "target_collection": "COL_KOSIS_ECONOMIC_SENTIMENT_INDEX_HISTORY"
-                    }
-                }
-            },
-            'worker': {
-                'function': KosisApiHandler.fetch_all_data,
-                'param_field': 'index_settings',  # index_settings 전체를 파라미터로 전달
-                'schedule': 'test_10'
             }
         },
         'toss': {
@@ -404,7 +365,7 @@ if __name__ == '__main__':
             'worker': {
                 'function': all_print.get_symbol_list_to_reply,
                 'param_field': 'SYMBOL',
-                'schedule': 'minutes_10' # minutes_10
+                'schedule': 'test_10' # minutes_10
                 # work_collection: 'COL_SCRAPPING_TOSS_COMMENT_DAILY_WORK'
                 # target_collection: 'COL_SCRAPPING_TOSS_COMMENT_DAILY'
             },
