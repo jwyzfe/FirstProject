@@ -43,7 +43,10 @@ class api_test_class:
     ?method=getList&apiKey=인증키없음&itmId=T1+&objL1=ALL&objL2=&objL3=&objL4=&objL5=&objL6=&objL7=&objL8=&format=json&jsonVD=Y&prdSe=M&newEstPrdCnt=3&
     orgId=101&tblId=DT_1C8015
 
-    
+    https://kosis.kr/openapi/Param/statisticsParameterData.do
+    ?method=getList&apiKey=인증키없음&itmId=13103134489999+&objL1=ALL&objL2=ALL&objL3=&objL4=&objL5=&objL6=&objL7=&objL8=&format=json&jsonVD=Y&prdSe=M&
+    startPrdDe=202412&endPrdDe=202412&
+    orgId=301&tblId=DT_512Y016
     
     https://kosis.kr/openapi/Param/statisticsParameterData.do
     ?method=getList&apiKey=인증키없음&itmId=13103135843999+&objL1=ALL&objL2=ALL&objL3=&objL4=&objL5=&objL6=&objL7=&objL8=&format=json&jsonVD=Y&prdSe=M&newEstPrdCnt=3&
@@ -61,10 +64,11 @@ class api_test_class:
         base_url = f' https://kosis.kr/openapi/Param/statisticsParameterData.do'
         config = read_config()
         apiKey = config['kosis']['api_key']
+
         params = {
             "method": "getList",
             "apiKey": "Mzg2OGUwZTA2NzliMWZjMDM4MDhhZmVkYjY4MzJlODA=",
-            "itmId": "13103134673999",
+            "itmId": "13103134712999",
             "objL1": "ALL",
             "objL2": "ALL",
             "objL3": "",
@@ -76,50 +80,10 @@ class api_test_class:
             "format": "json",
             "jsonVD": "Y",
             "prdSe": "M",
-            "newEstPrdCnt": 3,
+            "startPrdDe": "201401",
+            "endPrdDe": "202412",
             "orgId": 301,
-            "tblId": "DT_512Y013"
-        }
-
-        params = {
-            "method": "getList",
-            "apiKey": "Mzg2OGUwZTA2NzliMWZjMDM4MDhhZmVkYjY4MzJlODA=",
-            "itmId": "T1",
-            "objL1": "ALL",
-            "objL2": "",
-            "objL3": "",
-            "objL4": "",
-            "objL5": "",
-            "objL6": "",
-            "objL7": "",
-            "objL8": "",
-            "format": "json",
-            "jsonVD": "Y",
-            "prdSe": "M",
-            "newEstPrdCnt": 3,
-            "orgId": 101,
-            "tblId": "DT_1C8015"
-        }
-
-        params = {
-            "method": "getList",
-            "apiKey": "Mzg2OGUwZTA2NzliMWZjMDM4MDhhZmVkYjY4MzJlODA=",
-            "itmId": "T10",
-            "objL1": "ALL",
-            "objL2": "",
-            "objL3": "",
-            "objL4": "",
-            "objL5": "",
-            "objL6": "",
-            "objL7": "",
-            "objL8": "",
-            "format": "json",
-            "jsonVD": "Y",
-            "prdSe": "M",
-            "startPrdDe": "197001",
-            "endPrdDe": "202410",
-            "orgId": 101,
-            "tblId": "DT_1C8016"
+            "tblId": "DT_512Y015"
         }
 
         result_data = ApiRequester.send_api(base_url, params)
@@ -131,7 +95,7 @@ if __name__ == "__main__":
     ip_add = config['MongoDB_local']['ip_add']
     db_name = config['MongoDB_local']['db_name']
     client = MongoClient(ip_add)
-    col_name = 'COL_TEST_02'
+    col_name = 'COL_TEST_03'
 
     result_data = api_test_class.api_test_func()
     result_list = connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name, result_data)

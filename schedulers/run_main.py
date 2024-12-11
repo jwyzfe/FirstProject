@@ -153,8 +153,8 @@ def run(PIPELINE_CONFIG: Dict[str, Dict[str, Any]]) -> bool:
     """
     # 기본 설정
     config = read_config()
-    ip_add = config['MongoDB_remote_readonly']['ip_add']
-    db_name = config['MongoDB_remote_readonly']['db_name']
+    ip_add = config['MongoDB_remote']['ip_add']
+    db_name = config['MongoDB_remote']['db_name']
     client = MongoClient(ip_add)
     db = client[db_name]
     
@@ -182,8 +182,7 @@ def run(PIPELINE_CONFIG: Dict[str, Dict[str, Any]]) -> bool:
         'minutes_10': {
             'trigger': 'interval',
             'minutes': 10,
-        }
-        ,
+        },
         'test_10': {
             'trigger': 'interval',
             'seconds': 10,
@@ -195,7 +194,7 @@ def run(PIPELINE_CONFIG: Dict[str, Dict[str, Any]]) -> bool:
     # 1. 관리 작업 스케줄링 (Producer, QueueManager, Integrator)
     scheduler.add_job(
         JobProducer.register_all_daily_jobs,
-        **SCHEDULE_CONFIGS['test_10'], # hours_8
+        **SCHEDULE_CONFIGS['hours_8'], # hours_8
         id='register_all_daily_jobs',
         max_instances=1,
         coalesce=True,
@@ -204,7 +203,7 @@ def run(PIPELINE_CONFIG: Dict[str, Dict[str, Any]]) -> bool:
 
     scheduler.add_job(
         QueueManager.cleanup_work_collections,
-        **SCHEDULE_CONFIGS['test_10'], # hours_8
+        **SCHEDULE_CONFIGS['hours_8'], # hours_8
         id='cleanup_work_collections',
         max_instances=1,
         coalesce=True,
@@ -213,7 +212,7 @@ def run(PIPELINE_CONFIG: Dict[str, Dict[str, Any]]) -> bool:
 
     scheduler.add_job(
         DataIntegrator.process_all_daily_collections,
-        **SCHEDULE_CONFIGS['test_10'], # hours_8
+        **SCHEDULE_CONFIGS['hours_8'], # hours_8
         id='process_all_daily_collections',
         max_instances=1,
         coalesce=True,
@@ -309,7 +308,7 @@ if __name__ == '__main__':
             'worker': {
                 'function': api_stockprice_yfinance.get_stockprice_yfinance_daily,
                 'param_field': 'SYMBOL',
-                'schedule': 'test_10' # minutes_10
+                'schedule': 'hours_8' # minutes_10
                 # work_collection: 'COL_STOCKPRICE_DAILY_WORK'
                 # target_collection: 'COL_STOCKPRICE_EMBEDDED_DAILY'
             },
@@ -335,15 +334,86 @@ if __name__ == '__main__':
                         "objL1": "ALL",
                         "objL2": "",
                         "startPrdDe": "197001",
-                        "target_collection": "COL_KOSIS_COMPOSIT_ECONOMIC_INDEX_HISTORY"
+                        "target_collection": "COL_KOSIS_COMPOSIT_ECONOMIC_INDEX"
+                    },
+                    "Composite_Economic_Index_Timeserise": {
+                        "itmId": "T1",
+                        "orgId": 101,
+                        "tblId": "DT_1C8016",
+                        "objL1": "ALL",
+                        "startPrdDe": "197001",
+                        "target_collection": "COL_KOSIS_ECONOMIC_SENTIMENT_INDEX_TIMESERISE"
                     },
                     "Economic_Sentiment_Index": {
                         "itmId": "13103134473999",
                         "orgId": 301,
                         "tblId": "DT_513Y001",
                         "objL1": "ALL",
-                        "startPrdDe": "200301",
-                        "target_collection": "COL_KOSIS_ECONOMIC_SENTIMENT_INDEX_HISTORY"
+                        "startPrdDe": "201401", # "200301",
+                        "target_collection": "COL_KOSIS_ECONOMIC_SENTIMENT_INDEX"
+                    },
+                    "Business_Cycle_Survey_Actual": {
+                        "itmId": "13103134673999",
+                        "orgId": 301,
+                        "tblId": "DT_512Y013",
+                        "objL1": "ALL",
+                        "objL2": "ALL",
+                        "startPrdDe": "201401", # "200301",
+                        "target_collection": "COL_KOSIS_BUSINESS_CYCLE_SURVEY_ACTUAL"
+                    },
+                    "Business_Cycle_Survey_Forecast": {
+                        "itmId": "13103134488999",
+                        "orgId": 301,
+                        "tblId": "DT_512Y014",
+                        "objL1": "ALL",
+                        "objL2": "ALL",
+                        "startPrdDe": "201401", # "200302",
+                        "target_collection": "COL_KOSIS_BUSINESS_CYCLE_SURVEY_FORECAST"
+                    },
+                    "Business_Cycle_Survey_Revenue_Weighted_Actual": {
+                        "itmId": "13103134712999",
+                        "orgId": 301,
+                        "tblId": "DT_512Y015",
+                        "objL1": "ALL",
+                        "objL2": "ALL",
+                        "startPrdDe": "201401", # "200908",
+                        "target_collection": "COL_KOSIS_BUSINESS_CYCLE_SURVEY_REVENUE_WEIGHTED_ACTUAL"
+                    },
+                    "Business_Cycle_Survey_Revenue_Weighted_Forecast": {
+                        "itmId": "13103134489999",
+                        "orgId": 301,
+                        "tblId": "DT_512Y016",
+                        "objL1": "ALL",
+                        "objL2": "ALL",
+                        "startPrdDe": "201401", # "200909",
+                        "target_collection": "COL_KOSIS_BUSINESS_CYCLE_SURVEY_REVENUE_WEIGHTED_FORECAST"
+                    },
+                    "Industry_Specific_Business_Sentiment_Index_Actual": {
+                        "itmId": "13103134491999",
+                        "orgId": 301,
+                        "tblId": "DT_512Y007",
+                        "objL1": "ALL",
+                        "objL2": "ALL",
+                        "startPrdDe": "202201", # "200908",
+                        "target_collection": "COL_KOSIS_INDUSTRY_SPECIFIC_BUSINESS_SENTIMENT_INDEX_ACTUAL"
+                    },
+                    "Industry_Specific_Business_Sentiment_Index_Forecast": {
+                        "itmId": "13103134566999",
+                        "orgId": 301,
+                        "tblId": "DT_512Y008",
+                        "objL1": "ALL",
+                        "objL2": "ALL",
+                        "startPrdDe": "202201", # "200909",
+                        "target_collection": "COL_KOSIS_INDUSTRY_SPECIFIC_BUSINESS_SENTIMENT_INDEX_FORECAST"
+                    },
+                    "Management_Challenges": {
+                        "itmId": "13103135843999",
+                        "orgId": 301,
+                        "tblId": "DT_512Y021",
+                        "objL1": "ALL",
+                        "objL2": "ALL",
+                        "startPrdDe": "201401", # "200301",
+                        "target_collection": "COL_KOSIS_MANAGEMENT_CHALLENGES"
                     }
                 }
             },
@@ -373,7 +443,7 @@ if __name__ == '__main__':
             'worker': {
                 'function': scrap_toss_comment.run_toss_comments,
                 'param_field': 'SYMBOL',
-                'schedule': 'minutes_10' # minutes_10
+                'schedule': 'hours_8' # minutes_10
                 # work_collection: 'COL_SCRAPPING_TOSS_COMMENT_DAILY_WORK'
                 # target_collection: 'COL_SCRAPPING_TOSS_COMMENT_DAILY'
             },
@@ -404,7 +474,7 @@ if __name__ == '__main__':
             'worker': {
                 'function': all_print.get_symbol_list_to_reply,
                 'param_field': 'SYMBOL',
-                'schedule': 'minutes_10' # minutes_10
+                'schedule': 'hours_8' # minutes_10
                 # work_collection: 'COL_SCRAPPING_TOSS_COMMENT_DAILY_WORK'
                 # target_collection: 'COL_SCRAPPING_TOSS_COMMENT_DAILY'
             },
@@ -430,7 +500,7 @@ if __name__ == '__main__':
             'worker': {
                 'function': comment_scrap_stocktwits.run_stocktwits_scrap_list,
                 'param_field': 'SYMBOL',
-                'schedule': 'minutes_10' # minutes_10
+                'schedule': 'hours_8' # minutes_10
             },
             'integrator': {
                 'duplicate_fields': ['CONTENT', 'DATETIME']
