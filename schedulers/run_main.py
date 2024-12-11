@@ -153,8 +153,8 @@ def run(PIPELINE_CONFIG: Dict[str, Dict[str, Any]]) -> bool:
     """
     # 기본 설정
     config = read_config()
-    ip_add = config['MongoDB_remote_readonly']['ip_add']
-    db_name = config['MongoDB_remote_readonly']['db_name']
+    ip_add = config['MongoDB_remote']['ip_add']
+    db_name = config['MongoDB_remote']['db_name']
     client = MongoClient(ip_add)
     db = client[db_name]
     
@@ -190,7 +190,7 @@ def run(PIPELINE_CONFIG: Dict[str, Dict[str, Any]]) -> bool:
         }
     }
 
-    JobProducer.register_all_daily_jobs(db, db, client, PIPELINE_CONFIG)
+    # JobProducer.register_all_daily_jobs(db, db, client, PIPELINE_CONFIG)
 
     # 1. 관리 작업 스케줄링 (Producer, QueueManager, Integrator)
     scheduler.add_job(
@@ -365,7 +365,7 @@ if __name__ == '__main__':
             'worker': {
                 'function': all_print.get_symbol_list_to_reply,
                 'param_field': 'SYMBOL',
-                'schedule': 'test_10' # minutes_10
+                'schedule': 'minutes_10' # minutes_10
                 # work_collection: 'COL_SCRAPPING_TOSS_COMMENT_DAILY_WORK'
                 # target_collection: 'COL_SCRAPPING_TOSS_COMMENT_DAILY'
             },
