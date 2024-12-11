@@ -1,139 +1,92 @@
 
-# 공통 부분을 import 하여 구현
-# 직접 만든 class나 func을 참조하려면 꼭 필요 => main processor가 경로를 잘 몰라서 알려주어야함.
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-                
-from commons.config_reader import read_config # config read 용    
-from commons.api_send_requester import ApiRequester
-from commons.mongo_insert_recode import connect_mongo as connect_mongo_insert
 
 from pymongo import MongoClient
+from commons.mongo_insert_recode import connect_mongo as connect_mongo_insert             
+from commons.config_reader import read_config
+from commons.time_utils import TimeUtils
+from commons.api_send_requester import ApiRequester
 
-class api_test_class:
+class KosisApiHandler:
 
-    '''
-    기업경기조사(실적)
-    https://kosis.kr/openapi/Param/statisticsParameterData.do
-    ?method=getList&apiKey=인증키없음&itmId=13103134673999+&objL1=ALL&objL2=ALL&objL3=&objL4=&objL5=&objL6=&objL7=&objL8=&format=json&jsonVD=Y&prdSe=M&newEstPrdCnt=3&
-    orgId=301&tblId=DT_512Y013
-    https://kosis.kr/openapi/Param/statisticsParameterData.do
-    ?method=getList&apiKey=인증키없음&itmId=13103134673999+&objL1=ALL&objL2=ALL&objL3=&objL4=&objL5=&objL6=&objL7=&objL8=&format=json&jsonVD=Y&prdSe=M&newEstPrdCnt=3&
-    outputFields=ORG_ID+TBL_ID+TBL_NM+OBJ_ID+OBJ_NM+OBJ_NM_ENG+NM+NM_ENG+ITM_ID+ITM_NM+ITM_NM_ENG+UNIT_NM+UNIT_NM_ENG+PRD_SE+PRD_DE+LST_CHN_DE+&
-    orgId=301&tblId=DT_512Y013
-
-    기업경기조사(전망)
-    https://kosis.kr/openapi/Param/statisticsParameterData.do
-    ?method=getList&apiKey=인증키없음&itmId=13103134488999+&objL1=ALL&objL2=ALL&objL3=&objL4=&objL5=&objL6=&objL7=&objL8=&format=json&jsonVD=Y&prdSe=M&newEstPrdCnt=3&
-    orgId=301&tblId=DT_512Y014
-
-    
-    https://kosis.kr/openapi/Param/statisticsParameterData.do
-    ?method=getList&apiKey=인증키없음&itmId=13103134712999+&objL1=ALL&objL2=ALL&objL3=&objL4=&objL5=&objL6=&objL7=&objL8=&format=json&jsonVD=Y&prdSe=M&newEstPrdCnt=3&
-    orgId=301&tblId=DT_512Y015
-
-    경제심리지수
-    https://kosis.kr/openapi/Param/statisticsParameterData.do
-    ?method=getList&apiKey=인증키없음&itmId=13103134473999+&objL1=ALL&objL2=&objL3=&objL4=&objL5=&objL6=&objL7=&objL8=&format=json&jsonVD=Y&prdSe=M&newEstPrdCnt=3&
-    orgId=301&tblId=DT_513Y001
-
-    경기종합지수
-    https://kosis.kr/openapi/Param/statisticsParameterData.do
-    ?method=getList&apiKey=인증키없음&itmId=T1+&objL1=ALL&objL2=&objL3=&objL4=&objL5=&objL6=&objL7=&objL8=&format=json&jsonVD=Y&prdSe=M&newEstPrdCnt=3&
-    orgId=101&tblId=DT_1C8015
-
-    
-    
-    https://kosis.kr/openapi/Param/statisticsParameterData.do
-    ?method=getList&apiKey=인증키없음&itmId=13103135843999+&objL1=ALL&objL2=ALL&objL3=&objL4=&objL5=&objL6=&objL7=&objL8=&format=json&jsonVD=Y&prdSe=M&newEstPrdCnt=3&
-    orgId=301&tblId=DT_512Y021
-    '''
-
-    '''
-    1. url 변경이 있을지
-    2. 파라미터는 당연 변경 됨 유의할 것
-    2. apikey 도 받아와야함.
-    '''
-    def api_test_func():
-        # api
-
-        base_url = f' https://kosis.kr/openapi/Param/statisticsParameterData.do'
+    @staticmethod
+    def get_params(index_config):
         config = read_config()
         apiKey = config['kosis']['api_key']
+        
+        # 현재 날짜를 YYYYMM 형식으로 가져오기
+        endPrdDe = TimeUtils.get_current_time().strftime("%Y%m")
+        
+        # 파라미터 설정
         params = {
             "method": "getList",
-            "apiKey": "Mzg2OGUwZTA2NzliMWZjMDM4MDhhZmVkYjY4MzJlODA=",
-            "itmId": "13103134673999",
-            "objL1": "ALL",
-            "objL2": "ALL",
-            "objL3": "",
-            "objL4": "",
-            "objL5": "",
-            "objL6": "",
-            "objL7": "",
-            "objL8": "",
+            "apiKey": apiKey,
+            "itmId": index_config["itmId"],
             "format": "json",
             "jsonVD": "Y",
             "prdSe": "M",
-            "newEstPrdCnt": 3,
-            "orgId": 301,
-            "tblId": "DT_512Y013"
+            "startPrdDe": index_config["startPrdDe"],
+            "endPrdDe": endPrdDe,
+            "orgId": index_config["orgId"],
+            "tblId": index_config["tblId"]
         }
+        
+        # objL1 ~ objL8 설정
+        for i in range(1, 9):
+            key = f"objL{i}"
+            params[key] = index_config.get(key, "")
+        
+        return params
 
-        params = {
-            "method": "getList",
-            "apiKey": "Mzg2OGUwZTA2NzliMWZjMDM4MDhhZmVkYjY4MzJlODA=",
-            "itmId": "T1",
-            "objL1": "ALL",
-            "objL2": "",
-            "objL3": "",
-            "objL4": "",
-            "objL5": "",
-            "objL6": "",
-            "objL7": "",
-            "objL8": "",
-            "format": "json",
-            "jsonVD": "Y",
-            "prdSe": "M",
-            "newEstPrdCnt": 3,
-            "orgId": 101,
-            "tblId": "DT_1C8015"
-        }
-
-        params = {
-            "method": "getList",
-            "apiKey": "Mzg2OGUwZTA2NzliMWZjMDM4MDhhZmVkYjY4MzJlODA=",
-            "itmId": "T10",
-            "objL1": "ALL",
-            "objL2": "",
-            "objL3": "",
-            "objL4": "",
-            "objL5": "",
-            "objL6": "",
-            "objL7": "",
-            "objL8": "",
-            "format": "json",
-            "jsonVD": "Y",
-            "prdSe": "M",
-            "startPrdDe": "197001",
-            "endPrdDe": "202410",
-            "orgId": 101,
-            "tblId": "DT_1C8016"
-        }
-
+    @staticmethod
+    def fetch_data(index_name, index_config):
+        base_url = 'https://kosis.kr/openapi/Param/statisticsParameterData.do'
+        params = KosisApiHandler.get_params(index_config)
         result_data = ApiRequester.send_api(base_url, params)
         return result_data
 
+    @staticmethod
+    def fetch_all_data(index_settings):
+        results = {}
+        for index_name, index_config in index_settings.items():
+            data = KosisApiHandler.fetch_data(index_name, index_config)
+            results[index_name] = data
+        return results
+
 if __name__ == "__main__":
+    # 외부에서 INDEX_SETTINGS를 전달받는 예시
+    # 데이터 많지 않으니 그냥 째로 넘겨주고 실행하도록 할까?
+    # 어차피 2주에 한번 정도 일거니까? 또 엄청 많이는 안할 거니까? 
+    INDEX_SETTINGS = {
+        "Composite_Economic_Index": {
+            "itmId": "T1",
+            "orgId": 101,
+            "tblId": "DT_1C8015",
+            "objL1": "ALL",
+            "objL2": "",
+            "startPrdDe": "197001",
+            "collection_name": "Composite_Economic_Index"
+        },
+        "Economic_Sentiment_Index": {
+            "itmId": "13103134473999",
+            "orgId": 301,
+            "tblId": "DT_513Y001",
+            "objL1": "ALL",
+            "startPrdDe": "200301",
+            "collection_name": "Economic_Sentiment_Index"
+        }
+    }
 
-    config = read_config()
-    ip_add = config['MongoDB_local']['ip_add']
-    db_name = config['MongoDB_local']['db_name']
+    ip_add = f'mongodb://192.168.0.91:27017/'
+    db_name = f'DB_SGMN' # db name 바꾸기
+    # col_name = f'COL_NAVER_STOCK_REPLY' # collection name 바꾸기
+    
+    # MongoDB 서버에 연결
     client = MongoClient(ip_add)
-    col_name = 'COL_TEST_02'
 
-    result_data = api_test_class.api_test_func()
-    result_list = connect_mongo_insert.insert_recode_in_mongo(client, db_name, col_name, result_data)
-
-    pass
+    # 모든 지수에 대한 데이터 가져오기
+    all_data = KosisApiHandler.fetch_all_data(INDEX_SETTINGS)
+    for index_name, data in all_data.items():
+        result_list = connect_mongo_insert.insert_recode_in_mongo(client, db_name, INDEX_SETTINGS[index_name]["collection_name"], data)
