@@ -339,6 +339,37 @@ if __name__ == '__main__':
                 # target_collection: 'COL_SCRAPPING_TOSS_COMMENT_HISTORY'
             }
         },
+        'naver': {
+            # 공통으로 사용할 컬렉션 정의
+            'collections': {
+                'source': 'COL_NAS25_KOSPI25_CORPLIST',      # 작업 생성용 소스 데이터
+                'work': 'COL_SCRAPPING_NAVER_COMMENT_DAILY_WORK',  # 작업 큐
+                'daily': 'COL_SCRAPPING_NAVER_COMMENT_DAILY',      # 일일 수집 데이터
+                'history': 'COL_SCRAPPING_NAVER_COMMENT_HISTORY'   # 통합 저장소
+            },
+            # 아래 collection 주석들은 어떤 collection을 사용한다는 의미 실제 사용되는 코드 아님 
+            # 작업 생성 설정 (Producer)
+            'producer': {
+                'symbol_field': 'SYMBOL_N',
+                'batch_size': 5
+                # source_collection: 'COL_NAS25_KOSPI25_CORPLIST'
+                # work_collection: 'COL_SCRAPPING_TOSS_COMMENT_DAILY_WORK'
+            },
+            # 데이터 수집 설정 (Worker)
+            'worker': {
+                'function': scrap_toss_comment.run_toss_comments,
+                'param_field': 'SYMBOL',
+                'schedule': 'test_10' # minutes_10
+                # work_collection: 'COL_SCRAPPING_TOSS_COMMENT_DAILY_WORK'
+                # target_collection: 'COL_SCRAPPING_TOSS_COMMENT_DAILY'
+            },
+            # 데이터 통합 설정 (Integrator)
+            'integrator': {
+                'duplicate_fields': ['COMMENT', 'DATETIME']
+                # source_collection: 'COL_SCRAPPING_TOSS_COMMENT_DAILY'
+                # target_collection: 'COL_SCRAPPING_TOSS_COMMENT_HISTORY'
+            }
+        },
         'stocktwits': {
             'collections': {
                 'source': 'COL_NAS25_KOSPI25_CORPLIST',
