@@ -23,6 +23,9 @@ class DataIntegrator:
         """모든 일일 컬렉션 처리"""
         for job_type, config in collection_config.items():
             collections = config['collections']
+            # daily 컬렉션이 비어있으면 스킵
+            if not collections.get('daily'):
+                continue
             print(f"\nProcessing {job_type}: {collections['daily']} -> {collections['history']}")
             
             # 일일 데이터 조회 및 _id 필드 제거
