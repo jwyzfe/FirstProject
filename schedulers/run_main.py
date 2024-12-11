@@ -32,6 +32,7 @@ from devs_shlee.release.sel_comment_scrap_stocktwits import comment_scrap_stockt
 from devs_oz.release.MarketSenti_yf import calc_market_senti
 from devs_oz.release.news_scrapping_yahoo_headless import yahoo_finance_scrap
 from devs_jihunshim.release.bs4_news_hankyung import bs4_scrapping
+from devs_jihunshim.release.sel_naver_stock import all_print
 from devs_jiho.release.dartApi import CompanyFinancials
 from devs_jiho.release.ongoing_updateDailyTossComments import scrap_toss_comment
 from manage.mongodb_producer import JobProducer
@@ -152,8 +153,8 @@ def run(PIPELINE_CONFIG: Dict[str, Dict[str, Any]]) -> bool:
     """
     # 기본 설정
     config = read_config()
-    ip_add = config['MongoDB_remote']['ip_add']
-    db_name = config['MongoDB_remote']['db_name']
+    ip_add = config['MongoDB_remote_readonly']['ip_add']
+    db_name = config['MongoDB_remote_readonly']['db_name']
     client = MongoClient(ip_add)
     db = client[db_name]
     
@@ -362,7 +363,7 @@ if __name__ == '__main__':
             },
             # 데이터 수집 설정 (Worker)
             'worker': {
-                'function': scrap_toss_comment.run_toss_comments,
+                'function': all_print.get_symbol_list_to_reply,
                 'param_field': 'SYMBOL',
                 'schedule': 'test_10' # minutes_10
                 # work_collection: 'COL_SCRAPPING_TOSS_COMMENT_DAILY_WORK'
@@ -370,7 +371,7 @@ if __name__ == '__main__':
             },
             # 데이터 통합 설정 (Integrator)
             'integrator': {
-                'duplicate_fields': ['COMMENT', 'DATETIME']
+                'duplicate_fields': ['CONTENT', 'DATE']
                 # source_collection: 'COL_SCRAPPING_TOSS_COMMENT_DAILY'
                 # target_collection: 'COL_SCRAPPING_TOSS_COMMENT_HISTORY'
             }
