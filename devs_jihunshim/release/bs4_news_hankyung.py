@@ -12,7 +12,7 @@ import pandas as pd
 class bs4_scrapping:
 
     def bs4_news_hankyung(url_list):
-        all_results = []  # 모든 URL의 결과를 저장할 리스트
+        all_results = []  # 모든 URL의 결과를 저장할 리스트.
         
         for url in url_list:
             try:

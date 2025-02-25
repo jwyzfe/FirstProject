@@ -12,7 +12,7 @@ import time
 import sys
 import os
 import pandas as pd
-# 현재 파일의 두 단계 상위 디렉토리(FirstProject)를 path에 추가
+# 현재 파일의 두 단계 상위 디렉토리(FirstProject)를 path에 추가.
 current_dir = os.path.dirname(os.path.abspath(__file__))  # /manage
 parent_dir = os.path.dirname(current_dir)  # /schedulers
 project_dir = os.path.dirname(parent_dir)  # /FirstProject
